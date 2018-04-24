@@ -28,7 +28,7 @@ app.intent('course_number',
                   ]
   },
   function(request,response) {
-    var course = request.slot('COURSE');
+    var course = this.event.request.intent.slots.name.value;
     
    /* var speech = new AmazonSpeech()
 	  .say('Hi')
@@ -38,7 +38,7 @@ app.intent('course_number',
 	  .say(course.value);
 	 */
 	//var speechOutput = speech.ssml();
-	response.say("hi "+course.value);
+	response.say("hi "+course);
   }
 );
 

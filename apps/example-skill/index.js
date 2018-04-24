@@ -3,7 +3,7 @@ module.change_code = 1;
 
 var alexa = require( 'alexa-app' );
 var app = new alexa.app( 'example-skill' );
-var AmazonSpeech = require('ssml-builder/amazon_speech');
+//var AmazonSpeech = require('ssml-builder/amazon_speech');
  
 
 
@@ -30,15 +30,15 @@ app.intent('course_number',
   function(request,response) {
     var course = request.slot('COURSE');
     
-    var speech = new AmazonSpeech()
+   /* var speech = new AmazonSpeech()
 	  .say('Hi')
 	  .pause('1s')
 	  .whisper('the number you want is')
 	  .pause('500ms')
 	  .say(course.value);
-	 
-	var speechOutput = speech.ssml();
-	response.say(speechOutput);
+	 */
+	//var speechOutput = speech.ssml();
+	response.say("hi "+course.value);
   }
 );
 

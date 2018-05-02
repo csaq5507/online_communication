@@ -33,14 +33,15 @@ app.intent('course_number', {
     },
     function(request, response) {
         var slot = (slot?slot:request.slots.COURSE);
-        response.say(slot);
+        console.log(slot.resolutions);
         var resolution = (slot.resolutions && slot.resolutions.resolutionsPerAuthority && slot.resolutions.resolutionsPerAuthority.length > 0) ? slot.resolutions.resolutionsPerAuthority[0] : null;
         if(resolution && resolution.status.code == 'ER_SUCCESS_MATCH'){
             var resolutionValue = resolution.values[0].value;
             var value = resolutionValue.id && useId ? resolutionValue.id : resolutionValue.name;
             response.say(value);
-
+            console.log(resolutionValue);
         }
+        response.say("none");
      //   var cs = app.customSlots.COURSE;
      //   forEach()
     }

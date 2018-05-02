@@ -32,9 +32,15 @@ app.intent('course_number', {
         ]
     },
     function(request, response) {
-        var course = request.slot("COURSE");
+        var slot = (slot?slot:request.slots.COURSE);
+        response.say(slot);
+        var resolution = (slot.resolutions && slot.resolutions.resolutionsPerAuthority && slot.resolutions.resolutionsPerAuthority.length > 0) ? slot.resolutions.resolutionsPerAuthority[0] : null;
+        if(resolution && resolution.status.code == 'ER_SUCCESS_MATCH'){
+            var resolutionValue = resolution.values[0].value;
+            var value = resolutionValue.id && useId ? resolutionValue.id : resolutionValue.name;
+            response.say(value);
 
-        response.say(request);
+        }
      //   var cs = app.customSlots.COURSE;
      //   forEach()
     }
@@ -42,7 +48,7 @@ app.intent('course_number', {
 
 app.intent('what_course', {
         "utterances": [
-            "tell me all availale courses",
+            "tell me all available courses",
             "what courses are available"
         ]
     },

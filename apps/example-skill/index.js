@@ -9,6 +9,21 @@ var sync = require("sync-request");
 
 var host = "http://lfu.waldboth.com";
 
+function getCourse(name)
+{
+    var cs = app.customSlots.COURSE;
+    for(var i=0;i<cs.length;i++)
+    {
+        for(var j=0;j<cs[i].synonyms.length;j++)
+        {
+            if(cs[i].synonyms[j] == name)
+                return cs[i];
+
+        }
+    }
+    return null;
+}
+
 
 app.launch(function(request, response) {
     response.say('Welcome to the Alexa lfu-online').shouldEndSession(false);
@@ -32,18 +47,19 @@ app.intent('course_number', {
         ]
     },
     function(request, response) {
-    //    var slot = (slot?slot:request.slots.COURSE);
-        console.log(slot.resolutions);
-        var resolution = (slot.resolutions && slot.resolutions.resolutionsPerAuthority && slot.resolutions.resolutionsPerAuthority.length > 0) ? slot.resolutions.resolutionsPerAuthority[0] : null;
-        if(resolution && resolution.status.code == 'ER_SUCCESS_MATCH'){
-            var resolutionValue = resolution.values[0].value;
-            var value = resolutionValue.id && useId ? resolutionValue.id : resolutionValue.name;
-            response.say(value);
-            console.log(resolutionValue);
+        var course = request.slot("COURSE");
+        var full_course = getCourse(course);
+        if(full_course==null)
+        {
+            var speech = new AmazonSpeech().say('Could not find course ' + full_course);
+            response.say(speech.ssml());
+        } else {
+            var speech = new AmazonSpeech().say('The number for ' + full_course.value + ' is: ').pause('500ms').sayAs({
+                word: full_course.id,
+                interpret: "digits"
+            });
+            response.say(speech.ssml());
         }
-        response.say("none");
-     //   var cs = app.customSlots.COURSE;
-     //   forEach()
     }
 );
 

@@ -12,6 +12,7 @@ var host = "http://lfu.waldboth.com";
 function getCourse(name)
 {
     var cs = app.customSlots.COURSE;
+    console.log(cs);
     for(var i=0;i<cs.length;i++)
     {
         for(var j=0;j<cs[i].synonyms.length;j++)
@@ -49,9 +50,11 @@ app.intent('course_number', {
     function(request, response) {
         var course = request.slot("COURSE");
         var full_course = getCourse(course);
+        console.log(course);
+        console.log(full_course);
         if(full_course==null)
         {
-            var speech = new AmazonSpeech().say('Could not find course ' + full_course);
+            var speech = new AmazonSpeech().say('Could not find course ' + course);
             response.say(speech.ssml());
         } else {
             var speech = new AmazonSpeech().say('The number for ' + full_course.value + ' is: ').pause('500ms').sayAs({

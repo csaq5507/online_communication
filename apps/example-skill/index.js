@@ -4,7 +4,6 @@ module.change_code = 1;
 var alexa = require('alexa-app');
 var app = new alexa.app('example-skill');
 var AmazonSpeech = require('ssml-builder/amazon_speech');
-var http = require("http");
 var sync = require("sync-request");
 
 

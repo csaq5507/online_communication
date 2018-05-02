@@ -7,19 +7,19 @@
     "alexa-app-server": "^3.0.1",
     "ssml-builder": "^0.4.3"
   },
-  "devDependencies": {},
+  "devDependencies": { "sync-request" : "~6.0.0"},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/csaq5507/AlexaServer.git"
+    "url": "git+https://github.com/csaq5507/online_communication.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/csaq5507/AlexaServer/issues"
+    "url": "https://github.com/csaq5507/online_communication/issues"
   },
-  "homepage": "https://github.com/csaq5507/AlexaServer#readme"
+  "homepage": "https://github.com/csaq5507/online_communication#readme"
 }

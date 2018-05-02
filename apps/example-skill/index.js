@@ -9,18 +9,41 @@ var stringSimilarity = require('string-similarity');
 
 var host = "http://lfu.waldboth.com";
 
+function getCourseByNumber(number)
+{
+    var httpReq = sync("GET",host+"/wp-json/alexa/v1/course/name/"+number);
+    try {
+        var courses = JSON.parse(httpReq.getBody());
+        return courses;
+    } catch (e) {
+        console.log('Parse error: ' + e.message);
+        return null;
+    }
+    return null;
+}
+
+
 function getCourse(name)
 {
     var cs = app.customSlots.COURSE;
-    console.log(cs);
+    var max = 0;
+    var maxIndex = 0;
+    var secondIndex = -1;
     for(var i=0;i<cs.length;i++)
     {
         var matches = stringSimilarity.findBestMatch(name, cs[i].synonyms);
-        console.log(matches);
-        if(matches.bestMatch.rating >= 0.8)
-            return cs[i];
+        if(matches.bestMatch.rating > max)
+        {
+            max = matches.bestMatch.rating;
+            maxIndex = i;
+        } else if(matches.bestMatch.rating == max)
+            secondIndex = i;
     }
-    return null;
+    if(secondIndex == -1)
+        return cs[maxIndex];
+    else
+        return [cs[maxIndex],cs[secondIndex]];
+
 }
 
 
@@ -41,6 +64,8 @@ app.intent('course_number', {
             "COURSE": "COURSE"
         },
         "utterances": [
+            "what is the number of {COURSE}",
+            "for the number of {COURSE}",
             "tell me the number of {COURSE}",
             "what's the number of {COURSE}"
         ]
@@ -48,14 +73,15 @@ app.intent('course_number', {
     function(request, response) {
         var course = request.slot("COURSE");
         var full_course = getCourse(course);
-        console.log(course);
-        console.log(full_course);
         if(full_course==null)
         {
             var speech = new AmazonSpeech().say('Could not find course ' + course);
             response.say(speech.ssml());
+        } else if(Array.isArray(full_course)){
+            var speech = new AmazonSpeech().say('Did you mean ' + full_course[0].value + ' or ' + full_course[1].value + '?');
+            response.say(speech.ssml());
         } else {
-            var speech = new AmazonSpeech().say('The number for ' + full_course.value + ' is: ').pause('500ms').sayAs({
+            var speech = new AmazonSpeech().say('The number of ' + full_course.value + ' is: ').pause('500ms').sayAs({
                 word: full_course.id,
                 interpret: "digits"
             });
@@ -64,8 +90,66 @@ app.intent('course_number', {
     }
 );
 
-app.intent('what_course', {
+app.intent('instructor_of', {
+        "slots": {
+            "COURSE": "COURSE"
+        },
         "utterances": [
+            "what is the instructor of {COURSE}",
+            "for the instructor of {COURSE}",
+            "tell me the instructor of {COURSE}",
+            "what's the instructor of {COURSE}",
+            "what is the author of {COURSE}",
+            "for the author of {COURSE}",
+            "tell me the author of {COURSE}",
+            "what's the author of {COURSE}",
+            "what is the teacher of {COURSE}",
+            "for the teacher of {COURSE}",
+            "tell me the teacher of {COURSE}",
+            "what's the teacher of {COURSE}",
+            "what is the professor of {COURSE}",
+            "for the professor of {COURSE}",
+            "tell me the professor of {COURSE}",
+            "what's the professor of {COURSE}",
+            "what is the prof of {COURSE}",
+            "for the prof of {COURSE}",
+            "tell me the prof of {COURSE}",
+            "what's the prof of {COURSE}",
+            "who holds course {COURSE}",
+            "who leads course {COURSE}"
+        ]
+    },
+    function(request, response) {
+        var course = request.slot("COURSE");
+        var full_course = getCourse(course);
+        console.log(full_course);
+        if(full_course==null)
+        {
+            var speech = new AmazonSpeech().say('Could not find course ' + course);
+            response.say(speech.ssml());
+        } else if(Array.isArray(full_course)){
+            var speech = new AmazonSpeech().say('Did you mean ' + full_course[0].value + ' or ' + full_course[1].value + '?');
+            response.say(speech.ssml());
+        } else {
+            var course_information = getCourseByNumber(full_course.id);
+            console.log(course_information);
+            if(course_information == null || course_information.data)
+            {
+                var speech = new AmazonSpeech().say('Could not load course data for ' + full_course.value + ' from ' + host);
+                response.say(speech.ssml());
+            } else
+            {
+                var speech = new AmazonSpeech().say('The instructor of ' + full_course.value + ' is: ' + course_information.author);
+                response.say(speech.ssml());
+            }
+        }
+    }
+);
+
+app.intent('available_courses', {
+        "utterances": [
+            "for the available courses",
+            "for all the courses",
             "tell me all available courses",
             "what courses are available"
         ]
@@ -85,14 +169,12 @@ app.intent('what_course', {
 				speech.say(courses[i].item.name).pause('500ms');
 			speechOutput = speech.ssml();
 		} catch (e) {
-			console.error('Parse error: ' + e.message);
+			console.log('Parse error: ' + e.message);
 			var speech = new AmazonSpeech().say('Parse error: ' + e.message);
 			speechOutput = speech.ssml();
 		}						
 
 		response.say(speechOutput);
-		console.log("\n\nENDE:\n");
-		console.log(speechOutput);
 	}
 );
 
@@ -101,10 +183,14 @@ app.customSlot('COURSE', [{
         value: "VO Compiler Construction",
         synonyms: [
             "compiler onstruction lecture",
+            "compiler onstruction vo",
             "compiler onstruction",
             "compiler lecture",
+            "compiler vo",
             "lecture compiler construction",
-            "lecture compiler"
+            "vo compiler construction",
+            "lecture compiler",
+            "vo compiler"
         ]
     },
     {
@@ -159,10 +245,14 @@ app.customSlot('COURSE', [{
         value: "VO Computer Haptics",
         synonyms: [
             "computer haptics lecture",
+            "computer haptics vo",
             "lecture computer haptics",
+            "vo computer haptics",
             "computer haptics",
             "haptics lecture",
-            "lecture haptics"
+            "lecture haptics",
+            "haptics vo",
+            "vo haptics"
         ]
     },
     {
@@ -198,8 +288,12 @@ app.customSlot('COURSE', [{
         synonyms: [
             "lecture Machine Learning for Theorem Proving",
             "Machine Learning for Theorem Proving lecture",
+            "Machine Learning for Theorem Proving vo",
+            "vo Machine Learning for Theorem Proving",
             "theorem proving lecture",
             "theorem proving",
+            "vo theorem proving",
+            "theorem proving vo",
             "lecture theorem proving",
             "Machine Learning for Theorem Proving"
         ]

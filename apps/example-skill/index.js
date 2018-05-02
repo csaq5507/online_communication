@@ -123,13 +123,18 @@ app.intent('instructor_of', {
         var course = request.slot("COURSE");
         var full_course = getCourse(course);
         console.log(full_course);
+        console.log(request.getSession());
         if(full_course==null)
         {
             var speech = new AmazonSpeech().say('Could not find course ' + course);
             response.say(speech.ssml());
         } else if(Array.isArray(full_course)){
             var speech = new AmazonSpeech().say('Did you mean ' + full_course[0].value + ' or ' + full_course[1].value + '?');
-            response.say(speech.ssml());
+            request.getSession().set("action", "choose_course");
+            request.getSession().set("c0", full_course[0]);
+            request.getSession().set("c1", full_course[1]);
+            response.shouldEndSession(false,speech.ssml());
+            console.log(response);
         } else {
             var course_information = getCourseByNumber(full_course.id);
             console.log(course_information);

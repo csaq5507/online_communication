@@ -5,7 +5,7 @@ var alexa = require('alexa-app');
 var app = new alexa.app('example-skill');
 var AmazonSpeech = require('ssml-builder/amazon_speech');
 var sync = require("sync-request");
-
+var stringSimilarity = require('string-similarity');
 
 var host = "http://lfu.waldboth.com";
 
@@ -15,12 +15,10 @@ function getCourse(name)
     console.log(cs);
     for(var i=0;i<cs.length;i++)
     {
-        for(var j=0;j<cs[i].synonyms.length;j++)
-        {
-            if(cs[i].synonyms[j] == name)
-                return cs[i];
-
-        }
+        var matches = stringSimilarity.findBestMatch(name, cs[i].synonyms);
+        console.log(matches);
+        if(matches.bestMatch.rating >= 0.8)
+            return cs[i];
     }
     return null;
 }

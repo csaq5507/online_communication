@@ -10,38 +10,6 @@ var sync = require("sync-request");
 
 var host = "http://lfu.waldboth.com";
 
-function getCourseInformation(name, response) {
-
-    console.log(name);
-
-    var options = {
-        host: host,
-        port: 80,
-        path: '/wp-json/alexa/v1/course/name/' + name
-    };
-
-    http.get(options, function(res) {
-        console.log("Got response: " + res.statusCode);
-        if (res.statusCode = 200)
-            res.on("data", function(chunk) {
-				console.log("\nBODY: ");
-				console.log(chunk);
-				var courses = JSON.parse(chunk);
-                var speech = new AmazonSpeech()
-                    .say('Hi')
-                    .pause('1s')
-                    .whisper('the number you want is')
-                    .pause('500ms');
-                var speechOutput = speech.ssml();
-                response.say(speechOutput);
-            });
-    }).on('error', function(e) {
-        console.log("Got error: " + e.message);
-    });
-
-
-}
-
 
 app.launch(function(request, response) {
     response.say('Welcome to the Alexa lfu-online').shouldEndSession(false);
@@ -66,18 +34,10 @@ app.intent('course_number', {
     },
     function(request, response) {
         var course = request.slot("COURSE");
-        getCourseInformation(course, response);
-		while(result==null) 
-		console.log("wait");;
-		var speech = new AmazonSpeech()
-			.say('Hi')
-			.pause('1s')
-			.say('there are x courses available')
-			.pause('500ms');
 
-		var speechOutput = speech.ssml();
-		response.say(speechOutput);
-		result = null;
+        response.say(request);
+     //   var cs = app.customSlots.COURSE;
+     //   forEach()
     }
 );
 
@@ -98,8 +58,8 @@ app.intent('what_course', {
 															'is ' + l + ' course ':
 															'are ' + l + ' courses '
 															) + 'available:').pause('1s');
-			//for(var i = 0; i < courses.length;i++)
-			//	speech.say(courses[i].name).pause('500ms');
+			for(var i = 0; i < l;i++)
+				speech.say(courses[i].item.name).pause('500ms');
 			speechOutput = speech.ssml();
 		} catch (e) {
 			console.error('Parse error: ' + e.message);

@@ -9,7 +9,12 @@ var stringSimilarity = require("string-similarity");
 
 var host = "http://lfu.waldboth.com";
 
+var my_courses_url = "/wp-json/alexa/v1/courses/my_registrations"; //email and pw
+var all_courses_url = "/wp-json/alexa/v1/courses/all";
+var course_url = "/wp-json/alexa/v1/course/name/"; //course number in url
+var grade_url = "/wp-json/alexa/v1/grade"; //email password and course
 // Get Information from Our Server Functions
+
 
 /**
  * @brie Gets Course Information from the Server for the course with the given number
@@ -22,7 +27,7 @@ var host = "http://lfu.waldboth.com";
  */
 function getCourseByNumber(number)
 {
-    var httpReq = sync("GET",host+"/wp-json/alexa/v1/course/name/"+number);
+    var httpReq = sync("GET", host + course_url + number);
     try {
         return JSON.parse(httpReq.getBody());
     } catch (e) {
@@ -31,6 +36,70 @@ function getCourseByNumber(number)
     }
     return null;
 }
+
+/**
+ * @brie Gets all courses from the Server
+ *
+ *
+ * @return null if a parse error occurs,
+ *          the json object with the error message if the request got no result,
+ *          the json_ld object of the desired course
+ */
+function getAllCourses()
+{
+    var httpReq = sync("GET",host + all_courses_url);
+    try {
+        var courses = JSON.parse(httpReq.getBody());
+        return courses.itemListElement;
+    } catch (e) {
+        console.log("Parse error: " + e.message);
+        return null;
+    }
+}
+
+/**
+ * @brie Gets courses where user is registrated
+ *
+ *
+ * @return null if a parse error occurs,
+ *          the json object with the error message if the request got no result,
+ *          the json_ld object of the desired course
+ */
+function getMyCourses()
+{
+    var httpReq = sync("GET", host + my_courses_url + "?email=" + email + "&password=" + password);
+    try {
+        return JSON.parse(httpReq.getBody());
+    } catch (e) {
+        console.log("Parse error: " + e.message);
+        return null;
+    }
+    return null;
+}
+
+/**
+ * @brie Gets a the course where user is registered and has a grade given the course number
+ *
+ * @param number The number of the course
+ *
+ * @return null if a parse error occurs,
+ *          the json object with the error message if the request got no result,
+ *          the json_ld object of the desired course
+ */
+function getCourseWithGrade(number)
+{
+    var httpReq = sync("GET", host + grade_url + "?email=" + email + "&password=" + password + "&course=" + number);
+    try {
+        return JSON.parse(httpReq.getBody());
+    } catch (e) {
+        console.log("Parse error: " + e.message);
+        return null;
+    }
+    return null;
+}
+
+//////////////////////////////////
+
 
 /**
  * @brief Finds the custom slot element that matches best with the given input
@@ -103,27 +172,45 @@ function loadCourse(course, request, response)
     }
 }
 
-/**
- * @brief Gets all available courses from the Server
- *
- * @return all available courses from the Server,
- *          null if error occurs, should not happen
- */
-function getAllCourses(request, response)
-{
-    var httpReq = sync("GET",host+"/wp-json/alexa/v1/courses/all");
-    try {
-        var courses = JSON.parse(httpReq.getBody());
-        return courses.itemListElement;
-    } catch (e) {
-        console.log("Parse error: " + e.message);
-        var speech = new AmazonSpeech().say("Error on getting courses from Server");
-        response.say(speech.ssml());
-        return null;
+
+
+
+function response(request, response) {
+    var resp = request.slot("COURSE");
+    if(resp == "no" || resp == "no thank you" || resp == "goodbye") return;
+
+    request.getSession().clear("c0");
+    request.getSession().clear("c1");
+    var intent=request.getSession().get("intent");
+    request.getSession().clear("intent");
+    switch(intent) {
+        case "course_number":
+            course_number(request,response);
+            break;
+        case "instructor_of":
+            instructor_of(request,response);
+            break;
+        case "course_detail":
+            course_detail(request,response);
+            break;
+        case "available_courses":
+            available_courses(request,response);
+            break;
     }
 }
+app.intent("response", {
+        "slots": {
+            "COURSE": "COURSE"
+        },
+        "utterances": [
+            "{COURSE}",
+            "no thank you",
+            "no",
+            "goodbye"
 
-// Custom Intents
+        ]
+    }, response
+);
 
 function course_number(request, response) {
     request.getSession().set("intent", "course_number");
@@ -145,6 +232,51 @@ function course_number(request, response) {
         response.say(speech.ssml());
     }
 }
+app.intent("course_number", {
+        "slots": {
+            "COURSE": "COURSE"
+        },
+        "utterances": [
+            "{what is | what's | tell me} the number {of | for} {COURSE}",
+            "for the number {of | for} {COURSE}",
+            "the number {of | for} {COURSE}"
+
+        ]
+    },course_number
+);
+
+function available_courses(request, response) {
+    request.getSession().set("intent", "available_courses");
+    var speechOutput;
+    var courses = getAllCourses();
+    if(courses==null)
+    {
+        var speech = new AmazonSpeech().say("Could not load course data from " + host);
+        response.say(speech.ssml());
+        return;
+    }
+
+    var l = courses.length;
+    var speech = new AmazonSpeech().say("There " + ((l == 1)?
+            "is " + l + " course ":
+            "are " + l + " courses "
+    ) + "available:").pause("1s");
+    for(var i = 0; i < l;i++)
+        speech.say(courses[i].item.name).pause("500ms");
+    speechOutput = speech.ssml();
+
+
+    response.say(speechOutput);
+}
+app.intent("available_courses", {
+        "utterances": [
+            "for the available courses",
+            "for all the courses",
+            "tell me all available courses",
+            "what courses are available"
+        ]
+    }, available_courses
+);
 
 function instructor_of(request, response) {
     request.getSession().set("intent", "instructor_of");
@@ -163,6 +295,18 @@ function instructor_of(request, response) {
         response.say(speech.ssml());
     }
 }
+app.intent("instructor_of", {
+        "slots": {
+            "COURSE": "COURSE"
+        },
+        "utterances": [
+            "{what is | what's | tell me} the {instructor | author | teacher | professor | prof} of {COURSE}",
+            "for the {instructor | author | teacher | professor | prof} of {COURSE}",
+            "who {holds | leads} the course {COURSE}",
+            "who {holds | leads} {COURSE}"
+        ]
+    }, instructor_of
+);
 
 function course_detail(request, response) {
     request.getSession().set("intent", "course_detail");
@@ -178,90 +322,6 @@ function course_detail(request, response) {
         response.say(speech.ssml());
     }
 }
-
-function available_courses(request, response) {
-    request.getSession().set("intent", "available_courses");
-    var speechOutput;
-    var courses = getAllCourses(request, response);
-    if(courses==null)
-        return;
-
-    var l = courses.length;
-    var speech = new AmazonSpeech().say("There " + ((l == 1)?
-            "is " + l + " course ":
-            "are " + l + " courses "
-    ) + "available:").pause("1s");
-    for(var i = 0; i < l;i++)
-        speech.say(courses[i].item.name).pause("500ms");
-    speechOutput = speech.ssml();
-
-
-    response.say(speechOutput);
-}
-
-app.intent("response", {
-        "slots": {
-            "COURSE": "COURSE"
-        },
-        "utterances": [
-            "{COURSE}",
-            "no thank you",
-            "no",
-            "goodbye",
-
-        ]
-    },
-    function(request, response) {
-        var course = request.slot("COURSE");
-        request.getSession().clear("c0");
-        request.getSession().clear("c1");
-        request.getSession().clear("intent");
-        if(course == "no" || course == "no thank you" || course == "goodbye") {
-            request.getSession().set("end","true");
-        }
-        switch(request.getSession().get("intent")) {
-            case "course_number":
-                course_number(request,response);
-                break;
-            case "instructor_of":
-                instructor_of(request,response);
-                break;
-            case "course_detail":
-                course_detail(request,response);
-                break;
-            case "available_courses":
-                available_courses(request,response);
-                break;
-        }
-    }
-);
-
-app.intent("course_number", {
-        "slots": {
-            "COURSE": "COURSE"
-        },
-        "utterances": [
-            "{what is | what's | tell me} the number {of | for} {COURSE}",
-            "for the number {of | for} {COURSE}",
-            "the number {of | for} {COURSE}"
-
-        ]
-    },course_number
-);
-
-app.intent("instructor_of", {
-        "slots": {
-            "COURSE": "COURSE"
-        },
-        "utterances": [
-            "{what is | what's | tell me} the {instructor | author | teacher | professor | prof} of {COURSE}",
-            "for the {instructor | author | teacher | professor | prof} of {COURSE}",
-            "who {holds | leads} the course {COURSE}",
-            "who {holds | leads} {COURSE}"
-        ]
-    }, instructor_of
-);
-
 app.intent("course_detail", {
         "slots": {
             "COURSE": "COURSE"
@@ -274,20 +334,54 @@ app.intent("course_detail", {
     }, course_detail
 );
 
+function my_mark(request, response) {
+    request.getSession().set("intent", "my_mark");
+    var course = request.slot("COURSE");
+    course = loadAbsolvedCourse(course,request,response);
+    console.log(course);
 
-app.intent("available_courses", {
+}
+app.intent("my_mark", {
+        "slots": {
+            "COURSE": "COURSE"
+        },
         "utterances": [
-            "for the available courses",
-            "for all the courses",
-            "tell me all available courses",
-            "what courses are available"
+            "for my {mark | grade | result} {in | for } {COURSE}",
+            "{tell me| what is | what's } my {mark | grade | result} {in | for} {COURSE}"
         ]
-    }, available_courses
+    }, my_mark
 );
-//Alexa app intents
+
+function my_course(request, response){
+    request.getSession().set("intent", "my_course");
+    var courses = getMyCourses();
+    console.log(courses);
+    if(courses==null)
+    {
+        var speech = new AmazonSpeech().say("There ws a error with the request");
+        response.say(speech.ssml());
+        return null;
+    }
+}
+app.intent("my_course", {
+        "utterances": [
+            "for my courses",
+            "for the courses {I'm | i am} registered",
+            "{tell me | list | what are} my courses"
+        ]
+    }, my_course
+);
+
+
+
+
+
+//////////////////////////////////////////////////////////////////
+//Alexa app default intents///////////////////////////////////////
 
 app.launch(function(request, response) {
-    response.say("Welcome to the Alexa lfu-online").shouldEndSession(false);
+    var speech = new AmazonSpeech().say("Welcome to the Alexa ").spell("lfu").say(" online");
+    response.say(speech.ssml()).shouldEndSession(false);
 });
 
 app.intent("AMAZON.HelpIntent", {
@@ -326,25 +420,20 @@ app.error = function(exception, request, response) {
     response.say("Sorry an error occured " + error.message);
 };
 
-app.post = function(request, response, type, exception) {
-    if(request.getSession().get("end") == "true") {
-        var stopOutput = "Goodbye";
-        response.say(stopOutput);
-        return;
-    }
+function post(request, response) {
     switch(Math.floor(Math.random() * 3))
     {
         case 0:
-            response.say("<break time='500ms'/>Something else?").shouldEndSession(false);
+            response.reprompt("<break time='500ms'/>Something else?").shouldEndSession(false);
             break;
         case 1:
-            response.say("<break time='500ms'/>Wanna ask more?").shouldEndSession(false);
+            response.reprompt("<break time='500ms'/>Wanna ask more?").shouldEndSession(false);
             break;
         case 2:
-            response.say("<break time='500ms'/>Need more information?").shouldEndSession(false);
+            response.reprompt("<break time='500ms'/>Need more information?").shouldEndSession(false);
             break;
         default:
-            response.say("<break time='500ms'/>How can i continue to help?").shouldEndSession(false);
+            response.reprompt("<break time='500ms'/>How can i continue to help?").shouldEndSession(false);
             break;
     }
 };
@@ -577,7 +666,6 @@ app.customSlot("COURSE", [
         ]
     }
 
-    //TODO add elective modules
 ]);
 
 module.exports = app;

@@ -239,9 +239,16 @@ app.intent("course_number", {
             "COURSE": "COURSE"
         },
         "utterances": [
-            "{what is | what's | tell me} the number {of | for} {COURSE}",
-            "for the number {of | for} {COURSE}",
-            "the number {of | for} {COURSE}"
+            "what is the number of {COURSE}",
+            "what's the number of {COURSE}",
+            "tell me the number of {COURSE}",
+            "what is the number for {COURSE}",
+            "what's the number for {COURSE}",
+            "tell me the number for {COURSE}",
+            "for the number of {COURSE}",
+            "for the number for {COURSE}",
+            "the number for {COURSE}",
+            "the number of {COURSE}"
 
         ]
     },course_number
@@ -302,10 +309,26 @@ app.intent("instructor_of", {
             "COURSE": "COURSE"
         },
         "utterances": [
-            "{what is | what's | tell me} the {instructor | author | teacher | professor | prof} of {COURSE}",
-            "for the {instructor | author | teacher | professor | prof} of {COURSE}",
-            "who {holds | leads} the course {COURSE}",
-            "who {holds | leads} {COURSE}"
+            "what is the author of {COURSE}",
+            "what is the instructor of {COURSE}",
+            "what is the teacher of {COURSE}",
+            "what is the professor of {COURSE}",
+            "what's the instructor of {COURSE}",
+            "what's the author of {COURSE}",
+            "what's the teacher of {COURSE}",
+            "what's the professor of {COURSE}",
+            "tell me the instructor of {COURSE}",
+            "tell me the author of {COURSE}",
+            "tell me the teacher of {COURSE}",
+            "tell me the professor of {COURSE}",
+            "for the instructor of {COURSE}",
+            "for the author of {COURSE}",
+            "for the teacher of {COURSE}",
+            "for the professor of {COURSE}",
+            "who holds the course {COURSE}",
+            "who leads the course {COURSE}",
+            "who holds {COURSE}",
+            "who leads {COURSE}"
         ]
     }, instructor_of
 );
@@ -329,9 +352,26 @@ app.intent("course_detail", {
             "COURSE": "COURSE"
         },
         "utterances": [
-            "for {details | information | the description} about {COURSE}",
-            "tell me {details | information | the description} about {COURSE}",
-            "{what is | what's} {COURSE} about"
+            "for the description about {COURSE}",
+            "for information about {COURSE}",
+            "for details about {COURSE}",
+            "for the description of {COURSE}",
+            "for information of {COURSE}",
+            "for details of {COURSE}",
+            "for the description for {COURSE}",
+            "for information for {COURSE}",
+            "for details for {COURSE}",
+            "tell me the description about {COURSE}",
+            "tell me information about {COURSE}",
+            "tell me details about {COURSE}",
+            "tell me the description of {COURSE}",
+            "tell me information of {COURSE}",
+            "tell me details of {COURSE}",
+            "tell me the description for {COURSE}",
+            "tell me information for {COURSE}",
+            "tell me details for {COURSE}",
+            "what is {COURSE} about",
+            "what's {COURSE} about"
         ]
     }, course_detail
 );
@@ -348,8 +388,15 @@ app.intent("my_mark", {
             "COURSE": "COURSE"
         },
         "utterances": [
-            "for my {mark | grade | result} {in | for } {COURSE}",
-            "{tell me| what is | what's } my {mark | grade | result} {in | for} {COURSE}"
+            "for my grade in {COURSE}",
+            "for my mark in {COURSE}",
+            "tell me my grade in {COURSE}",
+            "what is my mark in {COURSE}",
+            "what's my grade  in {COURSE}",
+            "tell me my mark in {COURSE}",
+            "what is my grade in {COURSE}",
+            "what's my mark in {COURSE}",
+            "what did i got in {COURSE}"
         ]
     }, my_mark
 );
@@ -368,8 +415,11 @@ function my_course(request, response){
 app.intent("my_course", {
         "utterances": [
             "for my courses",
-            "for the courses {I'm | i am} registered",
-            "{tell me | list | what are} my courses"
+            "for the courses I am registered",
+            "for the courses I'm registered",
+            "tell me my courses",
+            "list my courses",
+            "what are my courses"
         ]
     }, my_course
 );

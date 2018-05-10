@@ -115,6 +115,8 @@ function getCourseSlotByInput(name)
     var max = 0;
     var maxIndex = 0;
     var secondIndex = -1;
+    console.log(name);
+    console.log(cs);
     for(var i=0;i<cs.length;i++)
     {
         var matches = stringSimilarity.findBestMatch(name, cs[i].synonyms);

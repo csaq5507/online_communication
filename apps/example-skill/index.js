@@ -90,13 +90,18 @@ function getMyCourses()
  *          the json object with the error message if the request got no result,
  *          the json_ld object of the desired course
  */
-function getCourseWithMark(number,request,response)
+function getCourseWithMark(number,course,request,response)
 {
     try {
         var httpReq = sync("GET", host + grade_url + "?email=" + email + "&password=" + password + "&course=" + number);
+        console.log(httpReq);
         if(httpReq.statusCode == 200)
             return JSON.parse(httpReq.getBody());
-        else
+        else if(httpReq.statusCode == 500)
+        {
+            var speech = new AmazonSpeech().say("There is no mark for " + course);
+            response.say(speech.ssml());
+        } else
             console.log("Error on request:"+httpReq.statusCode+httpReq.getBody());
     } catch (e) {
         console.log("Parse error: " + e.message);
@@ -396,7 +401,7 @@ function my_mark(request, response) {
         response.say(speech.ssml()).shouldEndSession(false);
         return null;
     } else {
-        course = getCourseWithMark(course.id, request, response);
+        course = getCourseWithMark(course.id,course.value , request, response);
         if (course == null) {
             var speech = new AmazonSpeech().say("There ws a error with the request");
             response.say(speech.ssml());

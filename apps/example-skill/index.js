@@ -94,16 +94,14 @@ function getCourseWithMark(number,request,response)
 {
     try {
         var httpReq = sync("GET", host + grade_url + "?email=" + email + "&password=" + password + "&course=" + number);
-        console.log(httpReq);
         if(httpReq.statusCode == 200)
             return JSON.parse(httpReq.getBody());
         else if(httpReq.statusCode == 500)
             return httpReq.getBody();
         else
-            console.log("Error on request:"+httpReq.statusCode+httpReq.getBody());
+            console.log("Error on request:"+httpReq.statusCode+"\n"+httpReq.getBody());
     } catch (e) {
         console.log("Parse error: " + e.message);
-        return null;
     }
     return null;
 }
@@ -436,7 +434,7 @@ function my_mark(request, response) {
             }
         }
     }
-    post();
+    post(request,response);
 }
 app.intent("my_mark", {
         "slots": {

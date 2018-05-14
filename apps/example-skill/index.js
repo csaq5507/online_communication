@@ -90,7 +90,7 @@ function getMyCourses()
  *          the json object with the error message if the request got no result,
  *          the json_ld object of the desired course
  */
-function getCourseWithMark(number,course,request,response)
+function getCourseWithMark(number,request,response)
 {
     try {
         var httpReq = sync("GET", host + grade_url + "?email=" + email + "&password=" + password + "&course=" + number);
@@ -98,10 +98,8 @@ function getCourseWithMark(number,course,request,response)
         if(httpReq.statusCode == 200)
             return JSON.parse(httpReq.getBody());
         else if(httpReq.statusCode == 500)
-        {
-            var speech = new AmazonSpeech().say("There is no mark for " + course);
-            response.say(speech.ssml());
-        } else
+            return httpReq.getBody();
+        else
             console.log("Error on request:"+httpReq.statusCode+httpReq.getBody());
     } catch (e) {
         console.log("Parse error: " + e.message);
@@ -401,9 +399,12 @@ function my_mark(request, response) {
         response.say(speech.ssml()).shouldEndSession(false);
         return null;
     } else {
-        course = getCourseWithMark(course.id,course.value , request, response);
+        course = getCourseWithMark(course.id, request, response);
         if (course == null) {
-            var speech = new AmazonSpeech().say("There ws a error with the request");
+            var speech = new AmazonSpeech().say("There was a error with the request");
+            response.say(speech.ssml());
+        } else if(course.educationalCredentialAwarded == null) {
+            var speech = new AmazonSpeech().say("You have no mark for "+ course.value);
             response.say(speech.ssml());
         } else
         {
@@ -435,6 +436,7 @@ function my_mark(request, response) {
             }
         }
     }
+    post();
 }
 app.intent("my_mark", {
         "slots": {

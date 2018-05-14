@@ -217,6 +217,8 @@ app.intent("response", {
         },
         "utterances": [
             "{COURSE}",
+            "and {COURSE}",
+            "what's about {COURSE}",
             "no thank you",
             "no",
             "goodbye"
@@ -476,6 +478,7 @@ function my_course(request, response){
             speech.say(courses[i].item.name).pause("500ms");
         response.say(speech.ssml());
     }
+    post(request,response);
 }
 app.intent("my_course", {
         "utterances": [

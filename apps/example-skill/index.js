@@ -71,6 +71,8 @@ function getMyCourses()
         var httpReq = sync("GET", host + my_courses_url + "?email=" + email + "&password=" + password);
         if(httpReq.statusCode == 200)
             return JSON.parse(httpReq.getBody());
+        else if(httpReq.statusCode > 300)
+            return httpReq.body.toString();
         else
             console.log("Error on request:"+httpReq.statusCode);
 
@@ -96,8 +98,8 @@ function getCourseWithMark(number,request,response)
         var httpReq = sync("GET", host + grade_url + "?email=" + email + "&password=" + password + "&course=" + number);
         if(httpReq.statusCode == 200)
             return JSON.parse(httpReq.getBody());
-        else if(httpReq.statusCode == 500)
-            return httpReq.getBody();
+        else if(httpReq.statusCode > 300)
+            return httpReq.body.toString();
         else
             console.log("Error on request:"+httpReq.statusCode+"\n"+httpReq.getBody());
     } catch (e) {
@@ -123,9 +125,14 @@ function getCourseSlotByInput(name)
     var max = 0;
     var maxIndex = 0;
     var secondIndex = -1;
+    console.log(name);
+    console.log("\n\n\n");
     for(var i=0;i<cs.length;i++)
     {
         var matches = stringSimilarity.findBestMatch(name, cs[i].synonyms);
+        console.log(matches.bestMatch);
+        if(matches.bestMatch.rating < 0.5)
+            continue;
         if(matches.bestMatch.rating > max)
         {
             max = matches.bestMatch.rating;
@@ -397,16 +404,16 @@ function my_mark(request, response) {
         response.say(speech.ssml()).shouldEndSession(false);
         return null;
     } else {
-        course = getCourseWithMark(course.id, request, response);
-        if (course == null) {
+        var mark = getCourseWithMark(course.id, request, response);
+        if (mark == null) {
             var speech = new AmazonSpeech().say("There was a error with the request");
             response.say(speech.ssml());
-        } else if(course.educationalCredentialAwarded == null) {
+        } else if(mark.educationalCredentialAwarded == null) {
             var speech = new AmazonSpeech().say("You have no mark for "+ course.value);
             response.say(speech.ssml());
         } else
         {
-            switch (parseInt(course.educationalCredentialAwarded)){
+            switch (parseInt(mark.educationalCredentialAwarded)){
                 case 1:
                     var speech = new AmazonSpeech().say("Congratulations, you got the mark 1");
                     response.say(speech.ssml());
@@ -561,9 +568,9 @@ app.customSlot("COURSE", [
         id: "703601",
         value: "VO Compiler Construction",
         synonyms: [
-            "compiler onstruction lecture",
-            "compiler onstruction vo",
-            "compiler onstruction",
+            "compiler construction lecture",
+            "compiler construction vo",
+            "compiler construction",
             "compiler lecture",
             "compiler vo",
             "lecture compiler construction",

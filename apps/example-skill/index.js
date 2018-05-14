@@ -188,9 +188,6 @@ function loadCourse(course, request, response)
 function response(request, response) {
     var resp = request.slot("COURSE");
     if(resp == "no" || resp == "no thank you" || resp == "goodbye") return;
-
-    request.getSession().clear("c0");
-    request.getSession().clear("c1");
     var intent=request.getSession().get("intent");
     request.getSession().clear("intent");
     switch(intent) {
@@ -208,6 +205,9 @@ function response(request, response) {
             break;
         case "my_mark":
             my_mark(request,response);
+            break;
+        default:
+            course_detail(request,response);
             break;
     }
 }
@@ -275,6 +275,7 @@ function available_courses(request, response) {
     {
         var speech = new AmazonSpeech().say("Could not load course data from " + host);
         response.say(speech.ssml());
+        post(request,response);
         return;
     }
 
@@ -286,16 +287,18 @@ function available_courses(request, response) {
     for(var i = 0; i < l;i++)
         speech.say(courses[i].item.name).pause("500ms");
     speechOutput = speech.ssml();
-
-
     response.say(speechOutput);
+    post(request,response);
 }
 app.intent("available_courses", {
         "utterances": [
             "for the available courses",
             "for all the courses",
             "tell me all available courses",
-            "what courses are available"
+            "what courses are available",
+            "which courses are available",
+            "for all courses",
+            "tell me all courses"
         ]
     }, available_courses
 );
@@ -536,8 +539,9 @@ app.intent("AMAZON.CancelIntent", {
 app.error = function(exception, request, response) {
     console.log(exception)
     console.log(request);
+    console.log(request.data.request.intent);
     console.log(response);
-    response.say("Sorry an error occured " + error.message);
+    response.say("Sorry an error occured " + exception);
 };
 
 function post(request, response) {

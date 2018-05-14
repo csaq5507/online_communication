@@ -13,8 +13,8 @@ var my_courses_url = "/wp-json/alexa/v1/courses/my_registrations"; //email and p
 var all_courses_url = "/wp-json/alexa/v1/courses/all";
 var course_url = "/wp-json/alexa/v1/course/name/"; //course number in url
 var grade_url = "/wp-json/alexa/v1/grade"; //email password and course
-// Get Information from Our Server Functions
-
+var email = "ivan.waldboth@student.uibk.ac.at";
+var password = "online_communication@18";
 
 /**
  * @brie Gets Course Information from the Server for the course with the given number
@@ -67,9 +67,13 @@ function getAllCourses()
  */
 function getMyCourses()
 {
-    var httpReq = sync("GET", host + my_courses_url + "?email=" + email + "&password=" + password);
     try {
-        return JSON.parse(httpReq.getBody());
+        var httpReq = sync("GET", host + my_courses_url + "?email=" + email + "&password=" + password);
+        if(httpReq.statusCode == 200)
+            return JSON.parse(httpReq.getBody());
+        else
+            console.log("Error on request:"+httpReq.statusCode);
+
     } catch (e) {
         console.log("Parse error: " + e.message);
         return null;
@@ -86,11 +90,14 @@ function getMyCourses()
  *          the json object with the error message if the request got no result,
  *          the json_ld object of the desired course
  */
-function getCourseWithGrade(number)
+function getCourseWithMark(number,request,response)
 {
-    var httpReq = sync("GET", host + grade_url + "?email=" + email + "&password=" + password + "&course=" + number);
     try {
-        return JSON.parse(httpReq.getBody());
+        var httpReq = sync("GET", host + grade_url + "?email=" + email + "&password=" + password + "&course=" + number);
+        if(httpReq.statusCode == 200)
+            return JSON.parse(httpReq.getBody());
+        else
+            console.log("Error on request:"+httpReq.statusCode+httpReq.getBody());
     } catch (e) {
         console.log("Parse error: " + e.message);
         return null;
@@ -115,8 +122,6 @@ function getCourseSlotByInput(name)
     var max = 0;
     var maxIndex = 0;
     var secondIndex = -1;
-    console.log(name);
-    console.log(cs);
     for(var i=0;i<cs.length;i++)
     {
         var matches = stringSimilarity.findBestMatch(name, cs[i].synonyms);
@@ -150,7 +155,6 @@ function getCourseSlotByInput(name)
 function loadCourse(course, request, response)
 {
     var full_course = getCourseSlotByInput(course);
-    console.log(full_course);
     if(full_course==null)
     {
         var speech = new AmazonSpeech().say("Could not find course " + course);
@@ -379,9 +383,53 @@ app.intent("course_detail", {
 function my_mark(request, response) {
     request.getSession().set("intent", "my_mark");
     var course = request.slot("COURSE");
-    course = loadAbsolvedCourse(course,request,response);
-    console.log(course);
-
+    course = getCourseSlotByInput(course);
+    if(course==null)
+    {
+        var speech = new AmazonSpeech().say("Could not find course " + course);
+        response.say(speech.ssml());
+        return null;
+    } else if(Array.isArray(course)){
+        var speech = new AmazonSpeech().say("Did you mean " + course[0].value + " or " + course[1].value + "?");
+        request.getSession().set("c0", course[0]);
+        request.getSession().set("c1", course[1]);
+        response.say(speech.ssml()).shouldEndSession(false);
+        return null;
+    } else {
+        course = getCourseWithMark(course.id, request, response);
+        if (course == null) {
+            var speech = new AmazonSpeech().say("There ws a error with the request");
+            response.say(speech.ssml());
+        } else
+        {
+            switch (parseInt(course.educationalCredentialAwarded)){
+                case 1:
+                    var speech = new AmazonSpeech().say("Congratulations, you got the mark 1");
+                    response.say(speech.ssml());
+                    break;
+                case 2:
+                    var speech = new AmazonSpeech().say("You did pretty well, you got the mark 2");
+                    response.say(speech.ssml());
+                    break;
+                case 3:
+                    var speech = new AmazonSpeech().say("Not bad,you got a 3");
+                    response.say(speech.ssml());
+                    break;
+                case 4:
+                    var speech = new AmazonSpeech().say("At least you passed, 4");
+                    response.say(speech.ssml());
+                    break;
+                case 5:
+                    var speech = new AmazonSpeech().say("I'm sorry, it's a 5. Maybe next time.");
+                    response.say(speech.ssml());
+                    break;
+                default:
+                    var speech = new AmazonSpeech().say("No mark yet.");
+                    response.say(speech.ssml());
+                    break;
+            }
+        }
+    }
 }
 app.intent("my_mark", {
         "slots": {
@@ -404,12 +452,21 @@ app.intent("my_mark", {
 function my_course(request, response){
     request.getSession().set("intent", "my_course");
     var courses = getMyCourses();
-    console.log(courses);
     if(courses==null)
     {
         var speech = new AmazonSpeech().say("There ws a error with the request");
         response.say(speech.ssml());
-        return null;
+    } else if(Array.isArray(courses.itemListElement))
+    {
+        var l = courses.itemListElement.length;
+        courses = courses.itemListElement;
+        var speech = new AmazonSpeech().say("You are enrolled to " + ((l == 1)?
+                l + " course ":
+                l + " courses "
+        ) + ":").pause("1s");
+        for(var i = 0; i < l;i++)
+            speech.say(courses[i].item.name).pause("500ms");
+        response.say(speech.ssml());
     }
 }
 app.intent("my_course", {

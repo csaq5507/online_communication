@@ -168,13 +168,9 @@ function loadCourse(course, request, response)
         var speech = new AmazonSpeech().say("Could not find course " + course);
         response.say(speech.ssml());
         return null;
-    } else if(Array.isArray(full_course)){
-        var speech = new AmazonSpeech().say("Did you mean " + full_course[0].value + " or " + full_course[1].value + "?");
-        request.getSession().set("c0", full_course[0]);
-        request.getSession().set("c1", full_course[1]);
-        response.say(speech.ssml()).shouldEndSession(false);
-        return null;
-    } else {
+    } else if(Array.isArray(full_course))
+        return decide(full_course,request,response);
+    else {
         var course_information = getCourseByNumber(full_course.id);
         if(course_information == null || course_information.data )
         {
@@ -210,6 +206,9 @@ function response(request, response) {
         case "available_courses":
             available_courses(request,response);
             break;
+        case "my_mark":
+            my_mark(request,response);
+            break;
     }
 }
 app.intent("response", {
@@ -226,6 +225,7 @@ app.intent("response", {
     }, response
 );
 
+
 function course_number(request, response) {
     request.getSession().set("intent", "course_number");
     var course = request.slot("COURSE");
@@ -234,17 +234,16 @@ function course_number(request, response) {
     {
         var speech = new AmazonSpeech().say("Could not find course " + course);
         response.say(speech.ssml());
-    } else if(Array.isArray(full_course)){
-        var speech = new AmazonSpeech().say("Did you mean " + full_course[0].value + " or " + full_course[1].value + "?");
-        response.say(speech.ssml()).shouldEndSession(false);
-        request.getSession().set("end","true");
-    } else {
+    } else if(Array.isArray(full_course))
+        return decide(full_course,request,response);
+    else {
         var speech = new AmazonSpeech().say("The number of " + full_course.value + " is: ").pause("500ms").sayAs({
             word: full_course.id,
             interpret: "digits"
         });
         response.say(speech.ssml());
     }
+    post(request,response);
 }
 app.intent("course_number", {
         "slots": {
@@ -397,13 +396,9 @@ function my_mark(request, response) {
         var speech = new AmazonSpeech().say("Could not find course " + course);
         response.say(speech.ssml());
         return null;
-    } else if(Array.isArray(course)){
-        var speech = new AmazonSpeech().say("Did you mean " + course[0].value + " or " + course[1].value + "?");
-        request.getSession().set("c0", course[0]);
-        request.getSession().set("c1", course[1]);
-        response.say(speech.ssml()).shouldEndSession(false);
-        return null;
-    } else {
+    } else if(Array.isArray(course))
+        return decide(course,request,response);
+     else {
         var mark = getCourseWithMark(course.id, request, response);
         if (mark == null) {
             var speech = new AmazonSpeech().say("There was a error with the request");
@@ -441,6 +436,7 @@ function my_mark(request, response) {
             }
         }
     }
+
     post(request,response);
 }
 app.intent("my_mark", {
@@ -557,9 +553,15 @@ function post(request, response) {
             response.reprompt("<break time='500ms'/>How can i continue to help?").shouldEndSession(false);
             break;
     }
-};
+}
 
-
+function decide(course,request,response){
+    var speech = new AmazonSpeech().say("Did you mean " + course[0].value + " or " + course[1].value + "?");
+    request.getSession().set("c0", course[0]);
+    request.getSession().set("c1", course[1]);
+    response.say(speech.ssml()).shouldEndSession(false);
+    return null;
+}
 
 // Custom slots
 

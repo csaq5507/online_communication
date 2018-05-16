@@ -536,12 +536,12 @@ function course_schedule(request, response){
             word: course.hasCourseInstance[len-1].startDate,
             interpret: "date"
         }).pause("500ms").say("Do you want to hear all appointments or add them to your calendar?");
-        response.say(speech.ssml());
+        response.say(speech.ssml()).shouldEndSession(false);
         request.getSession().set("course", course.name);
 
     }
-    post(request,response);
 }
+
 app.intent("course_schedule", {
     "slots": {
         "COURSE": "COURSE"

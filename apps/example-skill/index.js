@@ -206,6 +206,9 @@ function response(request, response) {
         case "my_mark":
             my_mark(request,response);
             break;
+        case "course_schedule":
+            course_schedule2(request,response);
+            break;
         default:
             course_detail(request,response);
             break;
@@ -221,7 +224,9 @@ app.intent("response", {
             "what's about {COURSE}",
             "no thank you",
             "no",
-            "goodbye"
+            "goodbye",
+            "add them to my calendar",
+            "want to hear them all"
 
         ]
     }, response
@@ -362,6 +367,8 @@ function course_detail(request, response) {
         var speech = new AmazonSpeech().say(course.name + ": ").pause("500ms").say(course.description);
         response.say(speech.ssml());
     }
+    post(request,response);
+
 }
 app.intent("course_detail", {
         "slots": {
@@ -495,6 +502,60 @@ app.intent("my_course", {
     }, my_course
 );
 
+function course_schedule2(request, response){
+    request.getSession().set("intent", "course_schedule");
+    var course = request.getSession().get("course");
+    course = loadCourse(course,request,response);
+    if(course == null)
+        return;
+    if(course.hasCourseInstance == null) {
+        var speech = new AmazonSpeech().say(course.name + " has no appointments.");
+        response.say(speech.ssml());
+    } else {
+        var len = course.hasCourseInstance.length;
+        console.log(request);
+    }
+    post(request,response);
+}
+
+function course_schedule(request, response){
+    request.getSession().set("intent", "course_schedule");
+    var course = request.slot("COURSE");
+    course = loadCourse(course,request,response);
+    if(course == null)
+        return;
+    if(course.hasCourseInstance == null) {
+        var speech = new AmazonSpeech().say(course.name + " has no appointments.");
+        response.say(speech.ssml());
+    } else {
+        var len = course.hasCourseInstance.length;
+        var speech = new AmazonSpeech().say(course.name + " has " + len + " appointments starting on ").sayAs({
+            word: course.hasCourseInstance[0].startDate,
+            interpret: "date"
+        }).say(" and goes until ").sayAs({
+            word: course.hasCourseInstance[len-1].startDate,
+            interpret: "date"
+        }).pause("500ms").say("Do you want to hear all appointments or add them to your calendar?");
+        response.say(speech.ssml());
+        request.getSession().set("course", course.name);
+
+    }
+    post(request,response);
+}
+app.intent("course_schedule", {
+    "slots": {
+        "COURSE": "COURSE"
+    },
+        "utterances": [
+            "tell me the schedule of {COURSE}",
+            "for the schedule of {COURSE}",
+            "when does the course {COURSE} take place?",
+            "when does {COURSE} take place?",
+            "when are the appointments for {COURSE}",
+            "when is the course {COURSE}"
+        ]
+    }, course_schedule
+);
 
 
 

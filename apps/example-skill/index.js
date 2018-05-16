@@ -224,9 +224,7 @@ app.intent("response", {
             "what's about {COURSE}",
             "no thank you",
             "no",
-            "goodbye",
-            "add them to my calendar",
-            "want to hear them all"
+            "goodbye"
 
         ]
     }, response
@@ -502,21 +500,6 @@ app.intent("my_course", {
     }, my_course
 );
 
-function course_schedule2(request, response){
-    request.getSession().set("intent", "course_schedule");
-    var course = request.getSession().get("course");
-    course = loadCourse(course,request,response);
-    if(course == null)
-        return;
-    if(course.hasCourseInstance == null) {
-        var speech = new AmazonSpeech().say(course.name + " has no appointments.");
-        response.say(speech.ssml());
-    } else {
-        var len = course.hasCourseInstance.length;
-        console.log(request);
-    }
-    post(request,response);
-}
 
 function course_schedule(request, response){
     request.getSession().set("intent", "course_schedule");
@@ -535,8 +518,9 @@ function course_schedule(request, response){
         }).say(" and goes until ").sayAs({
             word: course.hasCourseInstance[len-1].startDate,
             interpret: "date"
-        }).pause("500ms").say("Do you want to hear all appointments or add them to your calendar?");
+        }).pause("500ms").say("Do you want to hear all appointments?");
         response.say(speech.ssml()).shouldEndSession(false);
+
         request.getSession().set("course", course.name);
 
     }
@@ -557,8 +541,42 @@ app.intent("course_schedule", {
     }, course_schedule
 );
 
+function list_schedule(request, response){
 
-
+    request.getSession().set("intent", "course_schedule");
+    var course = request.getSession().get("course");
+    if(course == null)
+    {
+        var speech = new AmazonSpeech().say("Of witch course are we talking about?");
+        response.say(speech.ssml()).shouldEndSession(false);
+        return;
+    }
+    course = loadCourse(course,request,response);
+    if(course == null)
+        return;
+    if(course.hasCourseInstance == null) {
+        var speech = new AmazonSpeech().say(course.name + " has no appointments.");
+        response.say(speech.ssml());
+    } else {
+        var len = course.hasCourseInstance.length;
+        var speech = new AmazonSpeech().say(course.name + " has "+ len +" appointments: ").pause("500ms");
+        for(var i=0;i<len;i++)
+            speech.sayAs({
+                word: course.hasCourseInstance[i].startDate,
+                interpret: "date"
+            }).say(" in Room ").spell(course.hasCourseInstance[i].location).pause("200ms");
+        response.say(speech.ssml());
+    }
+    post(request,response);
+}
+app.intent("list_schedule", {
+    "utterances" : [
+        "want to hear them all",
+        "say all appointments",
+        "list all appointments"
+    ]
+    }, list_schedule
+);
 
 //////////////////////////////////////////////////////////////////
 //Alexa app default intents///////////////////////////////////////

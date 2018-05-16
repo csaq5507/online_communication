@@ -549,8 +549,8 @@ app.intent("course_schedule", {
         "utterances": [
             "tell me the schedule of {COURSE}",
             "for the schedule of {COURSE}",
-            "when does the course {COURSE} take place?",
-            "when does {COURSE} take place?",
+            "when does the course {COURSE} take place",
+            "when does {COURSE} take place",
             "when are the appointments for {COURSE}",
             "when is the course {COURSE}"
         ]

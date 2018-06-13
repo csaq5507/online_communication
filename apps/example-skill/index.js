@@ -4,13 +4,13 @@ module.change_code = 1;
 var alexa = require("alexa-app");
 var app = new alexa.app("lfu");
 var AmazonSpeech = require("ssml-builder/amazon_speech");
-var sync = require("sync-request");
+var http = require("http");
 var stringSimilarity = require("string-similarity");
 
-var host = "http://lfu.waldboth.com";
+var host = "lfu.waldboth.com";
 
 var my_courses_url = "/wp-json/alexa/v2/courses/my_registrations"; //email and pw
-var all_courses_url = "/wp-json/alexa/v1/courses/all";
+var all_courses_url = "/wp-json/alexa/v2/courses/all";
 var course_url = "/wp-json/alexa/v2/course/name/"; //course number in url
 var grade_url = "/wp-json/alexa/v2/grade"; //email password and course
 var enroll_url = "/wp-json/alexa/v2/enrol"; //email password and content json-ld
@@ -20,6 +20,26 @@ var enroll_url = "/wp-json/alexa/v2/enrol"; //email password and content json-ld
 
 var email = "ivan.waldboth@student.uibk.ac.at";
 var password = "online_communication@18";
+
+function sync(options,callback){
+    var req = http.request(options, res => {
+        res.setEncoding('utf8');
+        var responseString = "";
+
+        //accept incoming data asynchronously
+        res.on('data', chunk => {
+            responseString = responseString + chunk;
+        });
+
+        //return the data when streaming is complete
+        res.on('end', () => {
+            console.log(responseString);
+            callback(responseString);
+        });
+
+    });
+    req.end();
+}
 
 /**
  * @brief Gets Course Information from the Server for the course with the given number
@@ -50,16 +70,16 @@ function getCourseByNumber(number)
  *          the json object with the error message if the request got no result,
  *          the json_ld object of the desired course
  */
-function getAllCourses()
+function getAllCourses(request,response)
 {
-    var httpReq = sync("POST",host + all_courses_url);
-    try {
-        var courses = JSON.parse(httpReq.getBody());
-        return courses.itemListElement;
-    } catch (e) {
-        console.log("Parse error: " + e.message);
-        return null;
-    }
+    sync({
+        host: host,
+        path: all_courses_url,
+        method: "POST"
+    }, (responseString)=>{
+        response.say(responseString);
+     //   app.emit(":responseReady");
+    });
 }
 
 /**
@@ -328,26 +348,16 @@ app.intent("course_number", {
 
 function available_courses(request, response) {
     request.getSession().set("intent", "available_courses");
-    var speechOutput;
-    var courses = getAllCourses();
-    if(courses==null)
-    {
-        var speech = new AmazonSpeech().say("Could not load course data from " + host);
-        response.say(speech.ssml());
-        post(request,response);
-        return;
-    }
 
-    var l = courses.length;
-    var speech = new AmazonSpeech().say("There " + ((l == 1)?
-            "is " + l + " course ":
-            "are " + l + " courses "
-    ) + "available:").pause("1s");
-    for(var i = 0; i < l;i++)
-        speech.say(courses[i].item.name).pause("500ms");
-    speechOutput = speech.ssml();
-    response.say(speechOutput);
-    post(request,response);
+    var options = {
+        host : host,
+        path : all_courses_url,
+        method: "POST"
+    }
+    return http.request(options,(rc) => {
+       response.say("works");
+       return response.send();
+    });
 }
 app.intent("available_courses", {
         "utterances": [
@@ -707,9 +717,13 @@ app.intent("AMAZON.CancelIntent", {
 );
 
 app.error = function(exception, request, response) {
-    console.log(exception)
+    console.log("\n\nException: ");
+    console.log(exception);
+    console.log("\n\nRequest: ");
     console.log(request);
+    console.log("\n\nrequest.data.request.intent: ");
     console.log(request.data.request.intent);
+    console.log("\n\nresponse: ");
     console.log(response);
     response.say("Sorry an error occured " + exception);
 };

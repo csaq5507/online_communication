@@ -4,45 +4,20 @@ module.change_code = 1;
 var alexa = require("alexa-app");
 var app = new alexa.app("lfu");
 var AmazonSpeech = require("ssml-builder/amazon_speech");
-var http = require("http");
+var sync = require("sync-request");
 var stringSimilarity = require("string-similarity");
 
-var host = "lfu.waldboth.com";
+var host = "http://lfu.waldboth.com";
 
-var my_courses_url = "/wp-json/alexa/v2/courses/my_registrations"; //email and pw
-var all_courses_url = "/wp-json/alexa/v2/courses/all";
-var course_url = "/wp-json/alexa/v2/course/name/"; //course number in url
-var grade_url = "/wp-json/alexa/v2/grade"; //email password and course
-var enroll_url = "/wp-json/alexa/v2/enrol"; //email password and content json-ld
-
-//Stefan frogn wegn JSON-LD bsp und POST bsp
-
-
+var my_courses_url = "/wp-json/alexa/v1/courses/my_registrations"; //email and pw
+var all_courses_url = "/wp-json/alexa/v1/courses/all";
+var course_url = "/wp-json/alexa/v1/course/name/"; //course number in url
+var grade_url = "/wp-json/alexa/v1/grade"; //email password and course
 var email = "ivan.waldboth@student.uibk.ac.at";
 var password = "online_communication@18";
 
-function sync(options,callback){
-    var req = http.request(options, res => {
-        res.setEncoding('utf8');
-        var responseString = "";
-
-        //accept incoming data asynchronously
-        res.on('data', chunk => {
-            responseString = responseString + chunk;
-        });
-
-        //return the data when streaming is complete
-        res.on('end', () => {
-            console.log(responseString);
-            callback(responseString);
-        });
-
-    });
-    req.end();
-}
-
 /**
- * @brief Gets Course Information from the Server for the course with the given number
+ * @brie Gets Course Information from the Server for the course with the given number
  *
  * @param number The number of the course
  *
@@ -52,7 +27,7 @@ function sync(options,callback){
  */
 function getCourseByNumber(number)
 {
-    var httpReq = sync("POST", host + course_url + number);
+    var httpReq = sync("GET", host + course_url + number);
     try {
         return JSON.parse(httpReq.getBody());
     } catch (e) {
@@ -63,27 +38,27 @@ function getCourseByNumber(number)
 }
 
 /**
- * @brief Gets all courses from the Server
+ * @brie Gets all courses from the Server
  *
  *
  * @return null if a parse error occurs,
  *          the json object with the error message if the request got no result,
  *          the json_ld object of the desired course
  */
-function getAllCourses(request,response)
+function getAllCourses()
 {
-    sync({
-        host: host,
-        path: all_courses_url,
-        method: "POST"
-    }, (responseString)=>{
-        response.say(responseString);
-     //   app.emit(":responseReady");
-    });
+    var httpReq = sync("GET",host + all_courses_url);
+    try {
+        var courses = JSON.parse(httpReq.getBody());
+        return courses.itemListElement;
+    } catch (e) {
+        console.log("Parse error: " + e.message);
+        return null;
+    }
 }
 
 /**
- * @brief Gets courses where user is registrated
+ * @brie Gets courses where user is registrated
  *
  *
  * @return null if a parse error occurs,
@@ -92,11 +67,8 @@ function getAllCourses(request,response)
  */
 function getMyCourses()
 {
-    var httpReq = sync("POST", host + my_courses_url,{
-        "email":email,
-        "password":password
-    });
     try {
+        var httpReq = sync("GET", host + my_courses_url + "?email=" + email + "&password=" + password);
         if(httpReq.statusCode == 200)
             return JSON.parse(httpReq.getBody());
         else if(httpReq.statusCode > 300)
@@ -112,7 +84,7 @@ function getMyCourses()
 }
 
 /**
- * @brief Gets a the course where user is registered and has a grade given the course number
+ * @brie Gets a the course where user is registered and has a grade given the course number
  *
  * @param number The number of the course
  *
@@ -120,14 +92,10 @@ function getMyCourses()
  *          the json object with the error message if the request got no result,
  *          the json_ld object of the desired course
  */
-function getCourseWithMark(number, request,response)
+function getCourseWithMark(number,accessToken, request,response)
 {
-    var httpReq = sync("POST", host + grade_url,{
-        "email":email,
-        "password":password,
-        "course":number
-    });
     try {
+        var httpReq = sync("GET", host + grade_url + "?email=" + email + "&password=" + password + "&course=" + number);
         if(httpReq.statusCode == 200)
             return JSON.parse(httpReq.getBody());
         else if(httpReq.statusCode > 300)
@@ -144,46 +112,6 @@ function getCourseWithMark(number, request,response)
     return null;
 }
 
-/**
- * @brief Gets a the course where user is registered and has a grade given the course number
- *
- * @param number The number of the course
- *
- * @return null if a parse error occurs,
- *          the json object with the error message if the request got no result,
- *          the json_ld object of the desired course
- */
-function enrollCourse(number, request,response)
-{
-    var httpReq = sync("POST", host + enroll_url,{
-        "email":email,
-        "password":password,
-        "json-ld":{
-            "@context" : "",
-            "@type" : "",
-            "courseCode" : number
-        }
-    });
-    try {
-        if(httpReq.statusCode == 200)
-            return JSON.parse(httpReq.getBody());
-        else if(httpReq.statusCode > 300)
-        {
-            var speech = new AmazonSpeech().say("Your login credentials are probably outdated, please check in your alexa app.");
-            response.say(speech.ssml());
-            return null;
-        }
-        else
-            console.log("Error on request:"+httpReq.statusCode+"\n"+httpReq.getBody());
-    } catch (e) {
-        console.log("Parse error: " + e.message);
-    }
-    return null;
-}
-
-//////////////////////////////////
-//////////////////////////////////
-//////////////////////////////////
 //////////////////////////////////
 
 
@@ -348,16 +276,26 @@ app.intent("course_number", {
 
 function available_courses(request, response) {
     request.getSession().set("intent", "available_courses");
-
-    var options = {
-        host : host,
-        path : all_courses_url,
-        method: "POST"
+    var speechOutput;
+    var courses = getAllCourses();
+    if(courses==null)
+    {
+        var speech = new AmazonSpeech().say("Could not load course data from " + host);
+        response.say(speech.ssml());
+        post(request,response);
+        return;
     }
-    return http.request(options,(rc) => {
-       response.say("works");
-       return response.send();
-    });
+
+    var l = courses.length;
+    var speech = new AmazonSpeech().say("There " + ((l == 1)?
+            "is " + l + " course ":
+            "are " + l + " courses "
+    ) + "available:").pause("1s");
+    for(var i = 0; i < l;i++)
+        speech.say(courses[i].item.name).pause("500ms");
+    speechOutput = speech.ssml();
+    response.say(speechOutput);
+    post(request,response);
 }
 app.intent("available_courses", {
         "utterances": [
@@ -596,6 +534,7 @@ function course_schedule(request, response){
 
     }
 }
+
 app.intent("course_schedule", {
     "slots": {
         "COURSE": "COURSE"
@@ -649,36 +588,6 @@ app.intent("list_schedule", {
     }, list_schedule
 );
 
-function enroll(request, response){
-    request.getSession().set("intent", "enroll");
-    var course = request.slot("COURSE");
-    course = getCourseSlotByInput(course);
-    if(course == null)
-    {
-        var speech = new AmazonSpeech().say("Of witch course are we talking about?");
-        response.say(speech.ssml()).shouldEndSession(false);
-        return;
-    }
-    var result = enrollCourse(course.id,request,response);
-    var speech = new AmazonSpeech().say(result.message);
-    response.say(speech.ssml()).shouldEndSession(false);
-    post(request,response);
-}
-app.intent("enroll", {
-        "slots": {
-            "COURSE": "COURSE"
-        },
-        "utterances" : [
-            "register me for the course {COURSE}",
-            "enroll me for the course {COURSE}",
-            "i want to attend the course {COURSE}",
-            "register me for {COURSE}",
-            "enroll me for {COURSE}",
-            "i want to attend {COURSE}"
-        ]
-    }, enroll
-);
-
 //////////////////////////////////////////////////////////////////
 //Alexa app default intents///////////////////////////////////////
 
@@ -717,13 +626,9 @@ app.intent("AMAZON.CancelIntent", {
 );
 
 app.error = function(exception, request, response) {
-    console.log("\n\nException: ");
-    console.log(exception);
-    console.log("\n\nRequest: ");
+    console.log(exception)
     console.log(request);
-    console.log("\n\nrequest.data.request.intent: ");
     console.log(request.data.request.intent);
-    console.log("\n\nresponse: ");
     console.log(response);
     response.say("Sorry an error occured " + exception);
 };

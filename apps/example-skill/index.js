@@ -9,15 +9,20 @@ var stringSimilarity = require("string-similarity");
 
 var host = "http://lfu.waldboth.com";
 
-var my_courses_url = "/wp-json/alexa/v1/courses/my_registrations"; //email and pw
+var my_courses_url = "/wp-json/alexa/v2/courses/my_registrations"; //email and pw
 var all_courses_url = "/wp-json/alexa/v1/courses/all";
-var course_url = "/wp-json/alexa/v1/course/name/"; //course number in url
-var grade_url = "/wp-json/alexa/v1/grade"; //email password and course
+var course_url = "/wp-json/alexa/v2/course/name/"; //course number in url
+var grade_url = "/wp-json/alexa/v2/grade"; //email password and course
+var enroll_url = "/wp-json/alexa/v2/enrol"; //email password and content json-ld
+
+//Stefan frogn wegn JSON-LD bsp und POST bsp
+
+
 var email = "ivan.waldboth@student.uibk.ac.at";
 var password = "online_communication@18";
 
 /**
- * @brie Gets Course Information from the Server for the course with the given number
+ * @brief Gets Course Information from the Server for the course with the given number
  *
  * @param number The number of the course
  *
@@ -27,7 +32,7 @@ var password = "online_communication@18";
  */
 function getCourseByNumber(number)
 {
-    var httpReq = sync("GET", host + course_url + number);
+    var httpReq = sync("POST", host + course_url + number);
     try {
         return JSON.parse(httpReq.getBody());
     } catch (e) {
@@ -38,7 +43,7 @@ function getCourseByNumber(number)
 }
 
 /**
- * @brie Gets all courses from the Server
+ * @brief Gets all courses from the Server
  *
  *
  * @return null if a parse error occurs,
@@ -47,7 +52,7 @@ function getCourseByNumber(number)
  */
 function getAllCourses()
 {
-    var httpReq = sync("GET",host + all_courses_url);
+    var httpReq = sync("POST",host + all_courses_url);
     try {
         var courses = JSON.parse(httpReq.getBody());
         return courses.itemListElement;
@@ -58,7 +63,7 @@ function getAllCourses()
 }
 
 /**
- * @brie Gets courses where user is registrated
+ * @brief Gets courses where user is registrated
  *
  *
  * @return null if a parse error occurs,
@@ -67,8 +72,11 @@ function getAllCourses()
  */
 function getMyCourses()
 {
+    var httpReq = sync("POST", host + my_courses_url,{
+        "email":email,
+        "password":password
+    });
     try {
-        var httpReq = sync("GET", host + my_courses_url + "?email=" + email + "&password=" + password);
         if(httpReq.statusCode == 200)
             return JSON.parse(httpReq.getBody());
         else if(httpReq.statusCode > 300)
@@ -84,7 +92,7 @@ function getMyCourses()
 }
 
 /**
- * @brie Gets a the course where user is registered and has a grade given the course number
+ * @brief Gets a the course where user is registered and has a grade given the course number
  *
  * @param number The number of the course
  *
@@ -92,14 +100,22 @@ function getMyCourses()
  *          the json object with the error message if the request got no result,
  *          the json_ld object of the desired course
  */
-function getCourseWithMark(number,request,response)
+function getCourseWithMark(number, request,response)
 {
+    var httpReq = sync("POST", host + grade_url,{
+        "email":email,
+        "password":password,
+        "course":number
+    });
     try {
-        var httpReq = sync("GET", host + grade_url + "?email=" + email + "&password=" + password + "&course=" + number);
         if(httpReq.statusCode == 200)
             return JSON.parse(httpReq.getBody());
         else if(httpReq.statusCode > 300)
-            return httpReq.body.toString();
+        {
+            var speech = new AmazonSpeech().say("Your login credentials are probably outdated, please check in your alexa app.");
+            response.say(speech.ssml());
+            return null;
+        }
         else
             console.log("Error on request:"+httpReq.statusCode+"\n"+httpReq.getBody());
     } catch (e) {
@@ -108,6 +124,46 @@ function getCourseWithMark(number,request,response)
     return null;
 }
 
+/**
+ * @brief Gets a the course where user is registered and has a grade given the course number
+ *
+ * @param number The number of the course
+ *
+ * @return null if a parse error occurs,
+ *          the json object with the error message if the request got no result,
+ *          the json_ld object of the desired course
+ */
+function enrollCourse(number, request,response)
+{
+    var httpReq = sync("POST", host + enroll_url,{
+        "email":email,
+        "password":password,
+        "json-ld":{
+            "@context" : "",
+            "@type" : "",
+            "courseCode" : number
+        }
+    });
+    try {
+        if(httpReq.statusCode == 200)
+            return JSON.parse(httpReq.getBody());
+        else if(httpReq.statusCode > 300)
+        {
+            var speech = new AmazonSpeech().say("Your login credentials are probably outdated, please check in your alexa app.");
+            response.say(speech.ssml());
+            return null;
+        }
+        else
+            console.log("Error on request:"+httpReq.statusCode+"\n"+httpReq.getBody());
+    } catch (e) {
+        console.log("Parse error: " + e.message);
+    }
+    return null;
+}
+
+//////////////////////////////////
+//////////////////////////////////
+//////////////////////////////////
 //////////////////////////////////
 
 
@@ -401,53 +457,58 @@ function my_mark(request, response) {
     request.getSession().set("intent", "my_mark");
     var course = request.slot("COURSE");
     course = getCourseSlotByInput(course);
-    if(course==null)
-    {
-        var speech = new AmazonSpeech().say("Could not find course " + course);
-        response.say(speech.ssml());
+    var accessToken = request.sessionDetails.accessToken;
+    if (accessToken === null) {
+        var speech = new AmazonSpeech().say("I have no login credentials found. Please log in first in your Alexa app.");
+        response.linkAccount().say(speech.ssml());
         return null;
-    } else if(Array.isArray(course))
-        return decide(course,request,response);
-     else {
-        var mark = getCourseWithMark(course.id, request, response);
-        if (mark == null) {
-            var speech = new AmazonSpeech().say("There was a error with the request");
+    } else {
+        if (course == null) {
+            var speech = new AmazonSpeech().say("Could not find course " + course);
             response.say(speech.ssml());
-        } else if(mark.educationalCredentialAwarded == null) {
-            var speech = new AmazonSpeech().say("You have no mark for "+ course.value);
-            response.say(speech.ssml());
-        } else
-        {
-            switch (parseInt(mark.educationalCredentialAwarded)){
-                case 1:
-                    var speech = new AmazonSpeech().say("Congratulations, you got the mark 1");
-                    response.say(speech.ssml());
-                    break;
-                case 2:
-                    var speech = new AmazonSpeech().say("You did pretty well, you got the mark 2");
-                    response.say(speech.ssml());
-                    break;
-                case 3:
-                    var speech = new AmazonSpeech().say("Not bad,you got a 3");
-                    response.say(speech.ssml());
-                    break;
-                case 4:
-                    var speech = new AmazonSpeech().say("At least you passed, 4");
-                    response.say(speech.ssml());
-                    break;
-                case 5:
-                    var speech = new AmazonSpeech().say("I'm sorry, it's a 5. Maybe next time.");
-                    response.say(speech.ssml());
-                    break;
-                default:
-                    var speech = new AmazonSpeech().say("No mark yet.");
-                    response.say(speech.ssml());
-                    break;
+            return null;
+        } else if (Array.isArray(course))
+            return decide(course, request, response);
+        else {
+            var mark = getCourseWithMark(course.id, accessToken,request, response);
+            if (mark == null) {
+                var speech = new AmazonSpeech().say("There was a error with the request");
+                response.say(speech.ssml());
+            } else if (mark.educationalCredentialAwarded == null) {
+                var speech = new AmazonSpeech().say("You have no mark for " + course.value);
+                response.say(speech.ssml());
+            } else {
+                switch (parseInt(mark.educationalCredentialAwarded)) {
+                    case 1:
+                        var speech = new AmazonSpeech().say("Congratulations, you got the mark 1");
+                        response.say(speech.ssml());
+                        break;
+                    case 2:
+                        var speech = new AmazonSpeech().say("You did pretty well, you got the mark 2");
+                        response.say(speech.ssml());
+                        break;
+                    case 3:
+                        var speech = new AmazonSpeech().say("Not bad,you got a 3");
+                        response.say(speech.ssml());
+                        break;
+                    case 4:
+                        var speech = new AmazonSpeech().say("At least you passed, 4");
+                        response.say(speech.ssml());
+                        break;
+                    case 5:
+                        var speech = new AmazonSpeech().say("I'm sorry, it's a 5. Maybe next time.");
+                        response.say(speech.ssml());
+                        break;
+                    default:
+                        var speech = new AmazonSpeech().say("No mark yet.");
+                        response.say(speech.ssml());
+                        break;
+                }
             }
         }
-    }
 
-    post(request,response);
+        post(request, response);
+    }
 }
 app.intent("my_mark", {
         "slots": {
@@ -525,7 +586,6 @@ function course_schedule(request, response){
 
     }
 }
-
 app.intent("course_schedule", {
     "slots": {
         "COURSE": "COURSE"
@@ -573,9 +633,40 @@ app.intent("list_schedule", {
     "utterances" : [
         "want to hear them all",
         "say all appointments",
-        "list all appointments"
+        "list all appointments",
+        "yes"
     ]
     }, list_schedule
+);
+
+function enroll(request, response){
+    request.getSession().set("intent", "enroll");
+    var course = request.slot("COURSE");
+    course = getCourseSlotByInput(course);
+    if(course == null)
+    {
+        var speech = new AmazonSpeech().say("Of witch course are we talking about?");
+        response.say(speech.ssml()).shouldEndSession(false);
+        return;
+    }
+    var result = enrollCourse(course.id,request,response);
+    var speech = new AmazonSpeech().say(result.message);
+    response.say(speech.ssml()).shouldEndSession(false);
+    post(request,response);
+}
+app.intent("enroll", {
+        "slots": {
+            "COURSE": "COURSE"
+        },
+        "utterances" : [
+            "register me for the course {COURSE}",
+            "enroll me for the course {COURSE}",
+            "i want to attend the course {COURSE}",
+            "register me for {COURSE}",
+            "enroll me for {COURSE}",
+            "i want to attend {COURSE}"
+        ]
+    }, enroll
 );
 
 //////////////////////////////////////////////////////////////////

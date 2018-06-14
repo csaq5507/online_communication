@@ -1,11 +1,16 @@
 module.change_code = 1;
 "use strict";
 
+/******************** REQUIREMENTS ********************/
+
 var alexa = require("alexa-app");
 var app = new alexa.app("lfu");
 var AmazonSpeech = require("ssml-builder/amazon_speech");
 var sync = require("sync-request");
 var stringSimilarity = require("string-similarity");
+
+
+/********************** CONSTANTS *********************/
 
 var host = "http://lfu.waldboth.com";
 
@@ -15,157 +20,14 @@ var course_url = "/wp-json/alexa/v2/course/name/"; //course number in url
 var grade_url = "/wp-json/alexa/v2/grade"; //email password and course
 var enroll_url = "/wp-json/alexa/v2/enrol"; //email password and content json-ld
 
-//Stefan frogn wegn JSON-LD bsp und POST bsp
 
+/****************** USER CREDENTIALS ******************/
 
 var email = "ivan.waldboth@student.uibk.ac.at";
 var password = "online_communication@18";
 
-/**
- * @brief Gets Course Information from the Server for the course with the given number
- *
- * @param number The number of the course
- *
- * @return null if a parse error occurs,
- *          the json object with the error message if the request got no result,
- *          the json_ld object of the desired course
- */
-function getCourseByNumber(number)
-{
-    var httpReq = sync("POST", host + course_url + number);
-    try {
-        return JSON.parse(httpReq.getBody());
-    } catch (e) {
-        console.log("Parse error: " + e.message);
-        return null;
-    }
-    return null;
-}
 
-/**
- * @brief Gets all courses from the Server
- *
- *
- * @return null if a parse error occurs,
- *          the json object with the error message if the request got no result,
- *          the json_ld object of the desired course
- */
-function getAllCourses()
-{
-    var httpReq = sync("POST",host + all_courses_url);
-    try {
-        var courses = JSON.parse(httpReq.getBody());
-        return courses.itemListElement;
-    } catch (e) {
-        console.log("Parse error: " + e.message);
-        return null;
-    }
-}
-
-/**
- * @brief Gets courses where user is registrated
- *
- *
- * @return null if a parse error occurs,
- *          the json object with the error message if the request got no result,
- *          the json_ld object of the desired course
- */
-function getMyCourses()
-{
-    var httpReq = sync("POST", host + my_courses_url,{
-        "email":email,
-        "password":password
-    });
-    try {
-        if(httpReq.statusCode == 200)
-            return JSON.parse(httpReq.getBody());
-        else if(httpReq.statusCode > 300)
-            return httpReq.body.toString();
-        else
-            console.log("Error on request:"+httpReq.statusCode);
-
-    } catch (e) {
-        console.log("Parse error: " + e.message);
-        return null;
-    }
-    return null;
-}
-
-/**
- * @brief Gets a the course where user is registered and has a grade given the course number
- *
- * @param number The number of the course
- *
- * @return null if a parse error occurs,
- *          the json object with the error message if the request got no result,
- *          the json_ld object of the desired course
- */
-function getCourseWithMark(number, request,response)
-{
-    var httpReq = sync("POST", host + grade_url,{
-        "email":email,
-        "password":password,
-        "course":number
-    });
-    try {
-        if(httpReq.statusCode == 200)
-            return JSON.parse(httpReq.getBody());
-        else if(httpReq.statusCode > 300)
-        {
-            var speech = new AmazonSpeech().say("Your login credentials are probably outdated, please check in your alexa app.");
-            response.say(speech.ssml());
-            return null;
-        }
-        else
-            console.log("Error on request:"+httpReq.statusCode+"\n"+httpReq.getBody());
-    } catch (e) {
-        console.log("Parse error: " + e.message);
-    }
-    return null;
-}
-
-/**
- * @brief Gets a the course where user is registered and has a grade given the course number
- *
- * @param number The number of the course
- *
- * @return null if a parse error occurs,
- *          the json object with the error message if the request got no result,
- *          the json_ld object of the desired course
- */
-function enrollCourse(number, request,response)
-{
-    var httpReq = sync("POST", host + enroll_url,{
-        "email":email,
-        "password":password,
-        "json-ld":{
-            "@context" : "",
-            "@type" : "",
-            "courseCode" : number
-        }
-    });
-    try {
-        if(httpReq.statusCode == 200)
-            return JSON.parse(httpReq.getBody());
-        else if(httpReq.statusCode > 300)
-        {
-            var speech = new AmazonSpeech().say("Your login credentials are probably outdated, please check in your alexa app.");
-            response.say(speech.ssml());
-            return null;
-        }
-        else
-            console.log("Error on request:"+httpReq.statusCode+"\n"+httpReq.getBody());
-    } catch (e) {
-        console.log("Parse error: " + e.message);
-    }
-    return null;
-}
-
-//////////////////////////////////
-//////////////////////////////////
-//////////////////////////////////
-//////////////////////////////////
-
+/****************** HELPER FUNCTIONS ******************/
 
 /**
  * @brief Finds the custom slot element that matches best with the given input
@@ -175,18 +37,14 @@ function enrollCourse(number, request,response)
  *          null if best match below 80%,
  *          2 slot items if they have identical match rating (f.e.: compiler construction will return PS Compiler Construction and VO Compiler Construction)
  */
-function getCourseSlotByInput(name)
-{
+function getCourseSlotByInput(name) {
     var cs = app.customSlots.COURSE;
     var max = 0;
     var maxIndex = 0;
     var secondIndex = -1;
-    console.log(name);
-    console.log("\n\n\n");
     for(var i=0;i<cs.length;i++)
     {
         var matches = stringSimilarity.findBestMatch(name, cs[i].synonyms);
-        console.log(matches.bestMatch);
         if(matches.bestMatch.rating < 0.5)
             continue;
         if(matches.bestMatch.rating > max)
@@ -209,6 +67,31 @@ function getCourseSlotByInput(name)
 }
 
 /**
+ * @brief Check if myVar is a string
+ *
+ * @param myVar
+ * @return {boolean}
+ */
+function isString(myVar) {
+    return typeof myVar === 'string' || myVar instanceof String;
+}
+
+/**
+ * @brief Lets alexa ask the user for the course if it's not sure witch course the user means
+ *
+ * @param course
+ * @param request
+ * @param response
+ */
+function decide(course,request,response) {
+    var speech = new AmazonSpeech().say("Did you mean " + course[0].value + " or " + course[1].value + "?");
+    request.getSession().set("c0", course[0]);
+    request.getSession().set("c1", course[1]);
+    response.say(speech.ssml()).shouldEndSession(false);
+    return null;
+}
+
+/**
  * @brief combining getCourseByNumber & getCourseSlotByInput to get course information from user input
  *
  * @param course user input
@@ -216,35 +99,125 @@ function getCourseSlotByInput(name)
  * @param response
  * @return {null}
  */
-function loadCourse(course, request, response)
-{
+function loadCourse(course, request, response) {
     var full_course = getCourseSlotByInput(course);
-    if(full_course==null)
-    {
-        var speech = new AmazonSpeech().say("Could not find course " + course);
-        response.say(speech.ssml());
-        return null;
-    } else if(Array.isArray(full_course))
+    if(full_course == null)
+        return "Could not find course " + course;
+    else if(Array.isArray(full_course))
         return decide(full_course,request,response);
     else {
         var course_information = getCourseByNumber(full_course.id);
         if(course_information == null || course_information.data )
-        {
-            var speech = new AmazonSpeech().say("Could not load course data for " + full_course.value + " from " + host);
-            response.say(speech.ssml());
-            return null;
-        } else
+            return "Could not load course data for " + full_course.value + " from " + host;
+        else
             return course_information;
     }
 }
 
 
+/************** API CONNECTION FUNCTIONS **************/
 
+/**
+ * @brief Parse a http response Object from the API
+ *
+ * @param httpReq Response Object
+ * @return string error message if error occurs, Json Object otherwise
+ */
+function parseResponse(httpReq) {
+    try {
+        if (httpReq.statusCode == 200)
+            return JSON.parse(httpReq.body.toString("utf8"));
+        else if (httpReq.statusCode > 300)
+            return JSON.parse(httpReq.body.toString("utf8")).message;
+        else
+            return "Error on request with status code: " + httpReq.statusCode + "\nResponse: " + httpReq.body.toString("utf8");
+    } catch (e) {
+        return "Error occured: " + e.message;
+    }
+}
+
+/**
+ * @brief Gets Course Information from the Server for the course with the given number
+ *
+ * @param number The number of the course
+ *
+ * @return string error message if error occurs, course otherwise
+ */
+function getCourseByNumber(number) {
+    return parseResponse(sync("POST", host + course_url + number));
+}
+
+/** @brief Gets all courses from the Server
+ *
+ *
+ * @return string error message if error occurs, list with all courses otherwise
+ */
+function getAllCourses() {
+    return parseResponse(sync("POST", host + all_courses_url));
+}
+
+/**
+ * @brief Gets courses where user is registrated
+ *
+ *
+ * @return string error message if error occurs, list with courses user is registered
+ */
+function getMyCourses() {
+    var fd = new sync.FormData();
+    fd.append("email", email);
+    fd.append("password",password);
+    return parseResponse(sync("POST", host + my_courses_url, {
+        form : fd
+    }));
+}
+
+/**
+ * @brief Gets a the course where user is registered and has a grade given the course number
+ *
+ * @param number The number of the course
+ *
+ * @return string error message if error occurs, course with mark otherwise
+ */
+function getCourseWithMark(number) {
+    var fd = new sync.FormData();
+    fd.append('email', email);
+    fd.append('password', password);
+    fd.append('course', number);
+
+    return parseResponse(sync("POST", host + grade_url, {
+        form : fd,
+    }));
+}
+
+/**
+ * @brief Enroll for a course
+ *
+ * @param number The number of the course
+ *
+ * @return string error message if error occurs, success message otherwise
+ */
+function enrollCourse(number) {
+    var fd = new sync.FormData();
+    fd.append('email', email);
+    fd.append('password', password);
+
+    var jsonld = {
+    "@context": "//schema.org",
+    "@type": "Course",
+    "courseCode": number
+    };
+    fd.append('content',JSON.stringify(jsonld));
+
+    return parseResponse(sync("POST", host + enroll_url, {
+        form : fd,
+    }));
+}
+
+
+/****************** INTENT FUNCTIONS ******************/
 
 function response(request, response) {
-    var resp = request.slot("COURSE");
-    if(resp == "no" || resp == "no thank you" || resp == "goodbye") return;
-    var intent=request.getSession().get("intent");
+    var intent = request.getSession().get("intent");
     request.getSession().clear("intent");
     switch(intent) {
         case "course_number":
@@ -263,29 +236,16 @@ function response(request, response) {
             my_mark(request,response);
             break;
         case "course_schedule":
-            course_schedule2(request,response);
+            course_schedule(request,response);
+            break;
+        case "enroll":
+            enroll(request,response);
             break;
         default:
             course_detail(request,response);
             break;
     }
 }
-app.intent("response", {
-        "slots": {
-            "COURSE": "COURSE"
-        },
-        "utterances": [
-            "{COURSE}",
-            "and {COURSE}",
-            "what's about {COURSE}",
-            "no thank you",
-            "no",
-            "goodbye"
-
-        ]
-    }, response
-);
-
 
 function course_number(request, response) {
     request.getSession().set("intent", "course_number");
@@ -306,25 +266,6 @@ function course_number(request, response) {
     }
     post(request,response);
 }
-app.intent("course_number", {
-        "slots": {
-            "COURSE": "COURSE"
-        },
-        "utterances": [
-            "what is the number of {COURSE}",
-            "what's the number of {COURSE}",
-            "tell me the number of {COURSE}",
-            "what is the number for {COURSE}",
-            "what's the number for {COURSE}",
-            "tell me the number for {COURSE}",
-            "for the number of {COURSE}",
-            "for the number for {COURSE}",
-            "the number for {COURSE}",
-            "the number of {COURSE}"
-
-        ]
-    },course_number
-);
 
 function available_courses(request, response) {
     request.getSession().set("intent", "available_courses");
@@ -349,18 +290,6 @@ function available_courses(request, response) {
     response.say(speechOutput);
     post(request,response);
 }
-app.intent("available_courses", {
-        "utterances": [
-            "for the available courses",
-            "for all the courses",
-            "tell me all available courses",
-            "what courses are available",
-            "which courses are available",
-            "for all courses",
-            "tell me all courses"
-        ]
-    }, available_courses
-);
 
 function instructor_of(request, response) {
     request.getSession().set("intent", "instructor_of");
@@ -379,6 +308,214 @@ function instructor_of(request, response) {
         response.say(speech.ssml());
     }
 }
+
+function course_detail(request, response) {
+    request.getSession().set("intent", "course_detail");
+    var course = request.slot("COURSE");
+    course = loadCourse(course,request,response);
+    if(course == null)
+        return;
+    if(course.description == null) {
+        var speech = new AmazonSpeech().say(course.name + " has no description.");
+        response.say(speech.ssml());
+    } else {
+        var speech = new AmazonSpeech().say(course.name + ": ").pause("500ms").say(course.description);
+        response.say(speech.ssml());
+    }
+    post(request,response);
+
+}
+
+function my_mark(request, response) {
+    request.getSession().set("intent", "my_mark");
+    var course = request.slot("COURSE");
+    course = getCourseSlotByInput(course);
+
+    if (course == null) {
+        var speech = new AmazonSpeech().say("Could not find course " + course);
+        response.say(speech.ssml());
+        return null;
+    } else if (Array.isArray(course))
+        return decide(course, request, response);
+    else {
+        var mark = getCourseWithMark(course.id);
+
+        if(isString(mark))
+            response.say( new AmazonSpeech().say(mark).pause("500ms").ssml());
+        else {
+            switch (parseInt(mark.educationalCredentialAwarded)) {
+                case 1:
+                    var speech = new AmazonSpeech().say("Congratulations, you got the mark 1");
+                    response.say(speech.ssml());
+                    break;
+                case 2:
+                    var speech = new AmazonSpeech().say("You did pretty well, you got the mark 2");
+                    response.say(speech.ssml());
+                    break;
+                case 3:
+                    var speech = new AmazonSpeech().say("Not bad,you got a 3");
+                    response.say(speech.ssml());
+                    break;
+                case 4:
+                    var speech = new AmazonSpeech().say("At least you passed, 4");
+                    response.say(speech.ssml());
+                    break;
+                case 5:
+                    var speech = new AmazonSpeech().say("I'm sorry, it's a 5. Maybe next time.");
+                    response.say(speech.ssml());
+                    break;
+                default:
+                    var speech = new AmazonSpeech().say("No mark yet.");
+                    response.say(speech.ssml());
+                    break;
+            }
+        }
+    }
+
+    post(request, response);
+
+}
+
+function my_course(request, response){
+    request.getSession().set("intent", "my_course");
+    var courses = getMyCourses();
+
+    if(isString(courses))
+        response.say( new AmazonSpeech().say(courses).pause("500ms").ssml());
+    else if(Array.isArray(courses.itemListElement))
+    {
+        var l = courses.itemListElement.length;
+        courses = courses.itemListElement;
+        var speech = new AmazonSpeech().say("You are enrolled to " + ((l == 1)?
+                l + " course ":
+                l + " courses "
+        ) + ":").pause("1s");
+        for(var i = 0; i < l;i++)
+            speech.say(courses[i].item.name).pause("500ms");
+        response.say(speech.ssml());
+    } else
+        response.say( new AmazonSpeech().say("An error occured." + courses).pause("500ms").ssml());
+
+    post(request,response);
+}
+
+function course_schedule(request, response) {
+    request.getSession().set("intent", "course_schedule");
+    var course = request.slot("COURSE");
+    course = loadCourse(course);
+    if(isString(course))
+        response.say( new AmazonSpeech().say(course).pause("500ms").ssml());
+    if(course.hasCourseInstance == null) {
+        var speech = new AmazonSpeech().say(course.name + " has no appointments.");
+        response.say(speech.ssml());
+    } else {
+        var len = course.hasCourseInstance.length;
+        var speech = new AmazonSpeech().say(course.name + " has " + len + " appointments starting on ").sayAs({
+            word: course.hasCourseInstance[0].startDate,
+            interpret: "date"
+        }).say(" and goes until ").sayAs({
+            word: course.hasCourseInstance[len-1].startDate,
+            interpret: "date"
+        }).pause("500ms").say("Do you want to hear all appointments?");
+        response.say(speech.ssml()).shouldEndSession(false);
+
+        request.getSession().set("course", course.name);
+
+    }
+}
+
+function list_schedule(request, response) {
+
+    request.getSession().set("intent", "course_schedule");
+    var course = request.getSession().get("course");
+    if(course == null)
+    {
+        var speech = new AmazonSpeech().say("Of witch course are we talking about?");
+        response.say(speech.ssml()).shouldEndSession(false);
+        return;
+    }
+    course = loadCourse(course);
+    if(isString(course))
+        response.say( new AmazonSpeech().say(course).pause("500ms").ssml());
+    if(course.hasCourseInstance == null) {
+        var speech = new AmazonSpeech().say(course.name + " has no appointments.");
+        response.say(speech.ssml());
+    } else {
+        var len = course.hasCourseInstance.length;
+        var speech = new AmazonSpeech().say(course.name + " has "+ len +" appointments: ").pause("500ms");
+        for(var i=0;i<len;i++)
+            speech.sayAs({
+                word: course.hasCourseInstance[i].startDate,
+                interpret: "date"
+            }).say(" in Room ").spell(course.hasCourseInstance[i].location).pause("200ms");
+        response.say(speech.ssml());
+    }
+    post(request,response);
+}
+
+function enroll(request, response) {
+    request.getSession().set("intent", "enroll");
+    var course = request.slot("COURSE");
+    course = getCourseSlotByInput(course);
+    if (course == null) {
+        var speech = new AmazonSpeech().say("Could not find course " + course);
+        response.say(speech.ssml());
+        return null;
+    } else if (Array.isArray(course))
+        return decide(course, request, response);
+    else {
+        var result = enrollCourse(course.id);
+        var speech = new AmazonSpeech().say(result);
+        response.say(speech.ssml()).shouldEndSession(false);
+        post(request, response);
+    }
+}
+
+
+/********************** INTENTS ***********************/
+
+app.intent("response", {
+        "slots": {
+            "COURSE": "COURSE"
+        },
+        "utterances": [
+            "{COURSE}",
+            "and {COURSE}",
+            "what's about {COURSE}"
+        ]
+    }, response );
+
+app.intent("course_number", {
+    "slots": {
+        "COURSE": "COURSE"
+    },
+    "utterances": [
+        "what is the number of {COURSE}",
+        "what's the number of {COURSE}",
+        "tell me the number of {COURSE}",
+        "what is the number for {COURSE}",
+        "what's the number for {COURSE}",
+        "tell me the number for {COURSE}",
+        "for the number of {COURSE}",
+        "for the number for {COURSE}",
+        "the number for {COURSE}",
+        "the number of {COURSE}"
+
+    ]
+},course_number );
+
+app.intent("available_courses", {
+        "utterances": [
+            "for the available courses",
+            "for all the courses",
+            "tell me all available courses",
+            "what courses are available",
+            "which courses are available",
+            "for all courses",
+            "tell me all courses"
+        ]
+    }, available_courses );
+
 app.intent("instructor_of", {
         "slots": {
             "COURSE": "COURSE"
@@ -405,25 +542,8 @@ app.intent("instructor_of", {
             "who holds {COURSE}",
             "who leads {COURSE}"
         ]
-    }, instructor_of
-);
+    }, instructor_of );
 
-function course_detail(request, response) {
-    request.getSession().set("intent", "course_detail");
-    var course = request.slot("COURSE");
-    course = loadCourse(course,request,response);
-    if(course == null)
-        return;
-    if(course.description == null) {
-        var speech = new AmazonSpeech().say(course.name + " has no description.");
-        response.say(speech.ssml());
-    } else {
-        var speech = new AmazonSpeech().say(course.name + ": ").pause("500ms").say(course.description);
-        response.say(speech.ssml());
-    }
-    post(request,response);
-
-}
 app.intent("course_detail", {
         "slots": {
             "COURSE": "COURSE"
@@ -450,66 +570,8 @@ app.intent("course_detail", {
             "what is {COURSE} about",
             "what's {COURSE} about"
         ]
-    }, course_detail
-);
+    }, course_detail );
 
-function my_mark(request, response) {
-    request.getSession().set("intent", "my_mark");
-    var course = request.slot("COURSE");
-    course = getCourseSlotByInput(course);
-    var accessToken = request.sessionDetails.accessToken;
-    if (accessToken === null) {
-        var speech = new AmazonSpeech().say("I have no login credentials found. Please log in first in your Alexa app.");
-        response.linkAccount().say(speech.ssml());
-        return null;
-    } else {
-        if (course == null) {
-            var speech = new AmazonSpeech().say("Could not find course " + course);
-            response.say(speech.ssml());
-            return null;
-        } else if (Array.isArray(course))
-            return decide(course, request, response);
-        else {
-            var mark = getCourseWithMark(course.id, accessToken,request, response);
-            if (mark == null) {
-                var speech = new AmazonSpeech().say("There was a error with the request");
-                response.say(speech.ssml());
-            } else if (mark.educationalCredentialAwarded == null) {
-                var speech = new AmazonSpeech().say("You have no mark for " + course.value);
-                response.say(speech.ssml());
-            } else {
-                switch (parseInt(mark.educationalCredentialAwarded)) {
-                    case 1:
-                        var speech = new AmazonSpeech().say("Congratulations, you got the mark 1");
-                        response.say(speech.ssml());
-                        break;
-                    case 2:
-                        var speech = new AmazonSpeech().say("You did pretty well, you got the mark 2");
-                        response.say(speech.ssml());
-                        break;
-                    case 3:
-                        var speech = new AmazonSpeech().say("Not bad,you got a 3");
-                        response.say(speech.ssml());
-                        break;
-                    case 4:
-                        var speech = new AmazonSpeech().say("At least you passed, 4");
-                        response.say(speech.ssml());
-                        break;
-                    case 5:
-                        var speech = new AmazonSpeech().say("I'm sorry, it's a 5. Maybe next time.");
-                        response.say(speech.ssml());
-                        break;
-                    default:
-                        var speech = new AmazonSpeech().say("No mark yet.");
-                        response.say(speech.ssml());
-                        break;
-                }
-            }
-        }
-
-        post(request, response);
-    }
-}
 app.intent("my_mark", {
         "slots": {
             "COURSE": "COURSE"
@@ -525,30 +587,8 @@ app.intent("my_mark", {
             "what's my mark in {COURSE}",
             "what did i got in {COURSE}"
         ]
-    }, my_mark
-);
+    }, my_mark );
 
-function my_course(request, response){
-    request.getSession().set("intent", "my_course");
-    var courses = getMyCourses();
-    if(courses==null)
-    {
-        var speech = new AmazonSpeech().say("There ws a error with the request");
-        response.say(speech.ssml());
-    } else if(Array.isArray(courses.itemListElement))
-    {
-        var l = courses.itemListElement.length;
-        courses = courses.itemListElement;
-        var speech = new AmazonSpeech().say("You are enrolled to " + ((l == 1)?
-                l + " course ":
-                l + " courses "
-        ) + ":").pause("1s");
-        for(var i = 0; i < l;i++)
-            speech.say(courses[i].item.name).pause("500ms");
-        response.say(speech.ssml());
-    }
-    post(request,response);
-}
 app.intent("my_course", {
         "utterances": [
             "for my courses",
@@ -558,38 +598,12 @@ app.intent("my_course", {
             "list my courses",
             "what are my courses"
         ]
-    }, my_course
-);
+    }, my_course );
 
-
-function course_schedule(request, response){
-    request.getSession().set("intent", "course_schedule");
-    var course = request.slot("COURSE");
-    course = loadCourse(course,request,response);
-    if(course == null)
-        return;
-    if(course.hasCourseInstance == null) {
-        var speech = new AmazonSpeech().say(course.name + " has no appointments.");
-        response.say(speech.ssml());
-    } else {
-        var len = course.hasCourseInstance.length;
-        var speech = new AmazonSpeech().say(course.name + " has " + len + " appointments starting on ").sayAs({
-            word: course.hasCourseInstance[0].startDate,
-            interpret: "date"
-        }).say(" and goes until ").sayAs({
-            word: course.hasCourseInstance[len-1].startDate,
-            interpret: "date"
-        }).pause("500ms").say("Do you want to hear all appointments?");
-        response.say(speech.ssml()).shouldEndSession(false);
-
-        request.getSession().set("course", course.name);
-
-    }
-}
 app.intent("course_schedule", {
-    "slots": {
-        "COURSE": "COURSE"
-    },
+        "slots": {
+            "COURSE": "COURSE"
+        },
         "utterances": [
             "tell me the schedule of {COURSE}",
             "for the schedule of {COURSE}",
@@ -598,62 +612,17 @@ app.intent("course_schedule", {
             "when are the appointments for {COURSE}",
             "when is the course {COURSE}"
         ]
-    }, course_schedule
-);
+    }, course_schedule );
 
-function list_schedule(request, response){
-
-    request.getSession().set("intent", "course_schedule");
-    var course = request.getSession().get("course");
-    if(course == null)
-    {
-        var speech = new AmazonSpeech().say("Of witch course are we talking about?");
-        response.say(speech.ssml()).shouldEndSession(false);
-        return;
-    }
-    course = loadCourse(course,request,response);
-    if(course == null)
-        return;
-    if(course.hasCourseInstance == null) {
-        var speech = new AmazonSpeech().say(course.name + " has no appointments.");
-        response.say(speech.ssml());
-    } else {
-        var len = course.hasCourseInstance.length;
-        var speech = new AmazonSpeech().say(course.name + " has "+ len +" appointments: ").pause("500ms");
-        for(var i=0;i<len;i++)
-            speech.sayAs({
-                word: course.hasCourseInstance[i].startDate,
-                interpret: "date"
-            }).say(" in Room ").spell(course.hasCourseInstance[i].location).pause("200ms");
-        response.say(speech.ssml());
-    }
-    post(request,response);
-}
 app.intent("list_schedule", {
-    "utterances" : [
-        "want to hear them all",
-        "say all appointments",
-        "list all appointments",
-        "yes"
-    ]
-    }, list_schedule
-);
+        "utterances" : [
+            "want to hear them all",
+            "say all appointments",
+            "list all appointments",
+            "yes"
+        ]
+    }, list_schedule );
 
-function enroll(request, response){
-    request.getSession().set("intent", "enroll");
-    var course = request.slot("COURSE");
-    course = getCourseSlotByInput(course);
-    if(course == null)
-    {
-        var speech = new AmazonSpeech().say("Of witch course are we talking about?");
-        response.say(speech.ssml()).shouldEndSession(false);
-        return;
-    }
-    var result = enrollCourse(course.id,request,response);
-    var speech = new AmazonSpeech().say(result.message);
-    response.say(speech.ssml()).shouldEndSession(false);
-    post(request,response);
-}
 app.intent("enroll", {
         "slots": {
             "COURSE": "COURSE"
@@ -666,27 +635,16 @@ app.intent("enroll", {
             "enroll me for {COURSE}",
             "i want to attend {COURSE}"
         ]
-    }, enroll
-);
-
-//////////////////////////////////////////////////////////////////
-//Alexa app default intents///////////////////////////////////////
-
-app.launch(function(request, response) {
-    var speech = new AmazonSpeech().say("Welcome to the Alexa ").spell("lfu").say(" online");
-    response.say(speech.ssml()).shouldEndSession(false);
-});
+    }, enroll );
 
 app.intent("AMAZON.HelpIntent", {
         "slots": {},
         "utterances": []
-    },
-    function(request, response) {
+    }, function(request, response) {
         var helpOutput = "You can ask information about courses.";
         var reprompt = "What would you like to ask?";
         response.say(helpOutput).reprompt(reprompt).shouldEndSession(false);
-    }
-);
+    } );
 
 app.intent("AMAZON.StopIntent", {
         "slots": {},
@@ -694,8 +652,7 @@ app.intent("AMAZON.StopIntent", {
     }, function(request, response) {
         var stopOutput = "Goodbye";
         response.say(stopOutput);
-    }
-);
+    } );
 
 app.intent("AMAZON.CancelIntent", {
         "slots": {},
@@ -703,8 +660,23 @@ app.intent("AMAZON.CancelIntent", {
     }, function(request, response) {
         var cancelOutput = "No problem. Request cancelled.";
         response.say(cancelOutput);
-    }
-);
+    } );
+
+app.intent("AMAZON.NoIntent", {
+        "slots": {},
+        "utterances": []
+    }, function(request, response) {
+        var cancelOutput = "No problem. Request cancelled.";
+        response.say(cancelOutput);
+    } );
+
+
+/************************ APP *************************/
+
+app.launch(function(request, response) {
+    var speech = new AmazonSpeech().say("Welcome to the Alexa ").spell("lfu").say(" online");
+    response.say(speech.ssml()).shouldEndSession(false);
+});
 
 app.error = function(exception, request, response) {
     console.log(exception)
@@ -714,33 +686,8 @@ app.error = function(exception, request, response) {
     response.say("Sorry an error occured " + exception);
 };
 
-function post(request, response) {
-    switch(Math.floor(Math.random() * 3))
-    {
-        case 0:
-            response.reprompt("<break time='500ms'/>Something else?").shouldEndSession(false);
-            break;
-        case 1:
-            response.reprompt("<break time='500ms'/>Wanna ask more?").shouldEndSession(false);
-            break;
-        case 2:
-            response.reprompt("<break time='500ms'/>Need more information?").shouldEndSession(false);
-            break;
-        default:
-            response.reprompt("<break time='500ms'/>How can i continue to help?").shouldEndSession(false);
-            break;
-    }
-}
 
-function decide(course,request,response){
-    var speech = new AmazonSpeech().say("Did you mean " + course[0].value + " or " + course[1].value + "?");
-    request.getSession().set("c0", course[0]);
-    request.getSession().set("c1", course[1]);
-    response.say(speech.ssml()).shouldEndSession(false);
-    return null;
-}
-
-// Custom slots
+/******************* CUSTOM SLOTS *********************/
 
 app.customSlot("COURSE", [
     {

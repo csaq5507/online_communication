@@ -50,32 +50,38 @@ var password = "online_communication@18";
  *          2 slot items if they have identical match rating (f.e.: compiler construction will return PS Compiler Construction and VO Compiler Construction)
  */
 function getCourseSlotByInput(request, response) {
-	var name = request.slot("COURSE");
-	var cs = app.customSlots.COURSE;
-	var max = 0;
-	var maxIndex = 0;
-	var secondIndex = -1;
-	for (var i = 0; i < cs.length; i++) {
-		var matches = stringSimilarity.findBestMatch(name, cs[i].synonyms);
-		if (matches.bestMatch.rating < 0.5)
-			continue;
-		if (matches.bestMatch.rating > max) {
-			max = matches.bestMatch.rating;
-			maxIndex = i;
-		} else if (matches.bestMatch.rating == max)
-			secondIndex = i;
-	}
-	if (secondIndex == -1) {
-		if (max <= 0.8) {
-			var speech = new AmazonSpeech().say("Could not find course " + course);
-			response.say(speech.ssml());
-			return null;
+	try {
+		var name = request.slot("COURSE");
+		var cs = app.customSlots.COURSE;
+		var max = 0;
+		var maxIndex = 0;
+		var secondIndex = -1;
+		for (var i = 0; i < cs.length; i++) {
+			var matches = stringSimilarity.findBestMatch(name, cs[i].synonyms);
+			if (matches.bestMatch.rating < 0.5)
+				continue;
+			if (matches.bestMatch.rating > max) {
+				max = matches.bestMatch.rating;
+				maxIndex = i;
+			} else if (matches.bestMatch.rating == max)
+				secondIndex = i;
+		}
+		if (secondIndex == -1) {
+			if (max <= 0.8) {
+				var speech = new AmazonSpeech().say("Could not find course " + course);
+				response.say(speech.ssml());
+				return null;
+			}
+			else
+				return cs[maxIndex];
 		}
 		else
-			return cs[maxIndex];
+			return decide([cs[maxIndex], cs[secondIndex]], request, response);
+	} catch (e){
+		var speech = new AmazonSpeech().say("Sorry, i didn't understand the course you are talking about");
+		response.say(speech.ssml());
+		return null;
 	}
-	else
-		return decide([cs[maxIndex], cs[secondIndex]], request, response);
 
 }
 

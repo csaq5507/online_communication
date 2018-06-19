@@ -630,6 +630,7 @@ app.intent("AMAZON.NoIntent", {
 
 app.launch(function (request, response) {
 	var speech = new AmazonSpeech().say("Welcome to the Alexa ").spell("lfu").say(" online");
+	request.getSession().set("start","true");
 	response.say(speech.ssml()).shouldEndSession(false);
 });
 
@@ -645,7 +646,8 @@ app.pre = function (request, response) {
 	response.shouldEndSession(false);
 	console.log(request);
 	console.log(request.data.request);
-	request.getSession().set("intent", request.data.request.intent.name);
+	if(isString(request.getSession().get("start")))
+		request.getSession().set("intent", request.data.request.intent.name);
 };
 
 ///////////////////// CUSTOM SLOTS /////////////////////

@@ -644,9 +644,9 @@ app.error = function (exception, request, response) {
 
 app.pre = function (request, response) {
 	response.shouldEndSession(false);
-	console.log(request);
-	console.log(request.data.request);
-	if(isString(request.getSession().get("start")))
+	if(request.data.type == "LaunchRequest" || (request.data.type == "IntentRequest" && request.data.request.intent.name == "response") )
+		return;
+	else
 		request.getSession().set("intent", request.data.request.intent.name);
 };
 

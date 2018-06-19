@@ -12,12 +12,12 @@ var stringSimilarity = require("string-similarity");
 
 /////////////////////// CONSTANTS //////////////////////
 
-var host = "http://lfu.waldboth.com";
+	var host = "http://lfu.waldboth.com";
 
-var my_courses_url = "/wp-json/alexa/v2/courses/my_registrations"; //email and pw
-var all_courses_url = "/wp-json/alexa/v2/courses/all";
-var course_url = "/wp-json/alexa/v2/course/name/"; //course number in url
-var grade_url = "/wp-json/alexa/v2/grade"; //email password and course
+	var my_courses_url = "/wp-json/alexa/v2/courses/my_registrations"; //email and pw
+	var all_courses_url = "/wp-json/alexa/v2/courses/all";
+	var course_url = "/wp-json/alexa/v2/course/name/"; //course number in url
+	var grade_url = "/wp-json/alexa/v2/grade"; //email password and course
 var enroll_url = "/wp-json/alexa/v2/enrol"; //email password and content json-ld
 
 var INTENTS = {
@@ -417,6 +417,7 @@ function list_schedule(request, response) {
 				word : course.hasCourseInstance[i].startDate,
 				interpret : "date"
 			}).say(" in Room ").spell(course.hasCourseInstance[i].location).pause("200ms");
+		console.log(speech.ssml());
 		response.say(speech.ssml());
 	}
 }
@@ -642,6 +643,8 @@ app.error = function (exception, request, response) {
 
 app.pre = function (request, response) {
 	response.shouldEndSession(false);
+	console.log(request);
+	console.log(request.data.request);
 	request.getSession().set("intent", request.data.request.intent.name);
 };
 

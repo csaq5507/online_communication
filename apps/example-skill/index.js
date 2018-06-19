@@ -274,14 +274,17 @@ function available_courses(request, response) {
 		response.say(courses);
 		return;
 	}
-	var l = courses.length;
-	var speech = new AmazonSpeech().say("There " + ((l == 1) ?
-			"is " + l + " course " :
-			"are " + l + " courses "
-	) + "available:").pause("1s");
-	for (var i = 0; i < l; i++)
-		speech.say(courses[i].item.name).pause("500ms");
-	response.say(speech.ssml());
+	if(courses.hasOwnProperty("itemListElement")) {
+		courses=courses.itemListElement;
+		var l = courses.length;
+		var speech = new AmazonSpeech().say("There " + ((l == 1) ?
+				"is " + l + " course " :
+				"are " + l + " courses "
+		) + "available:").pause("1s");
+		for (var i = 0; i < l; i++)
+			speech.say(courses[i].item.name).pause("500ms");
+		response.say(speech.ssml());
+	} else response.say(new AmazonSpeech().say("Something went wrong").ssml());
 }
 
 function instructor_of(request, response) {
@@ -417,7 +420,6 @@ function list_schedule(request, response) {
 				word : course.hasCourseInstance[i].startDate,
 				interpret : "date"
 			}).say(" in Room ").spell(course.hasCourseInstance[i].location).pause("200ms");
-		console.log(speech.ssml());
 		response.say(speech.ssml());
 	}
 }

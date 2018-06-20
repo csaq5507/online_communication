@@ -327,6 +327,7 @@ function my_mark(request, response) {
 
 	if (course != null) {
 		var mark = getCourseWithMark(course.id);
+		if(mark == null) return;
 		if (isString(mark))
 			response.say(mark);
 		else {

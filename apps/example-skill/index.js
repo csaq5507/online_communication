@@ -218,7 +218,7 @@ function enrollCourse(number) {
 
 	var jsonld = {
 		"@context" : "//schema.org",
-		"@type" : "Course",
+		"@type" : "RegisterAction",
 		"courseCode" : number
 	};
 	fd.append('content', JSON.stringify(jsonld));

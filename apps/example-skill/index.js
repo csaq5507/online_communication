@@ -35,8 +35,8 @@ var INTENTS = {
 
 /////////////////// USER CREDENTIALS ///////////////////
 
-var email = "ivan.waldboth@student.uibk.ac.at";
-var password = "online_communication@18";
+var email = "test@uibk.ac.at";
+var password = "5Nn@SpY3L2qYgN3FCN(o5oFk";
 
 
 /////////////////// HELPER FUNCTIONS ///////////////////
